@@ -2,7 +2,7 @@
 
 https://iusmusic.github.io/Halo/
 
-Halo is a static browser app for a camera-based virtual keyboard that can be hosted on GitHub Pages.
+Halo is a static browser app for a camera-based virtual keyboard.
 
 ## What changed in this update
 
