@@ -75,13 +75,3 @@ Then open:
 ```text
 http://localhost:8080
 ```
-
-## Suggested repo name
-
-- `ghostboard-surface-pad`
-- `neon-air-keyboard`
-- `surface-vision-keyboard`
-
-## License
-
-Add the license you want before publishing publicly.
