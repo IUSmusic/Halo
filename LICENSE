@@ -1,0 +1,86 @@
+Copyright (c) 2026 Pezhman Farhangi
+
+All rights reserved, except as expressly stated below.
+
+This repository and the software, source code, documentation, visual design, data
+structures, text, and other original materials contained in it (collectively, the
+"Work") are the exclusive property of Pezhman Farhangi, except for third-party
+materials identified in THIRD PARTY NOTICES.md or where another license is expressly
+stated.
+
+1. Limited Permission Grant
+
+Subject to the terms of this License, the copyright holder grants you a limited,
+worldwide, non-exclusive, non-transferable, non-sublicensable, revocable license to:
+
+(a) view, run, and use the Work and any included application for personal,
+    educational, evaluation, and non-commercial research purposes;
+
+(b) reproduce the Work locally as reasonably necessary to run, inspect, evaluate,
+    and study it for those purposes;
+
+(c) make private, internal modifications to the Work as reasonably necessary for
+    non-commercial research, evaluation, validation, and reproducibility; and
+
+(d) publish and discuss research results derived from your use of the Work, provided
+    that you do not redistribute substantial portions of the Work itself except as
+    allowed by applicable law or with prior written permission.
+
+2. Conditions
+
+You must:
+
+(a) retain this License, copyright notice, and any attribution notices in all copies
+    you make for permitted use; and
+
+(b) provide appropriate attribution to Pezhman Farhangi and the repository when
+    referencing or citing the Work in publications or public discussion, where
+    customary.
+
+3. Restrictions
+
+Except as expressly permitted above, you may not, without prior written permission
+from the copyright holder:
+
+(a) use the Work for any commercial purpose;
+
+(b) distribute, publish, sublicense, sell, rent, or otherwise make the Work available
+    to third parties in source or modified form;
+
+(c) operate a public hosted version, mirror, or competing service based on the Work;
+
+(d) create or distribute derivative works for public use;
+
+(e) remove attribution, copyright, license, or proprietary notices;
+
+(f) imply endorsement by the copyright holder; or
+
+(g) use any name, logo, or trademark associated with the Work except for truthful,
+    nominative reference.
+
+4. Third-Party Materials
+
+Third-party components, services, data providers, fonts, trademarks, and other
+external materials referenced by or interoperating with the Work remain the property
+of their respective owners and are subject to their own license terms, usage
+policies, and terms of service. Nothing in this License claims ownership of, or
+grants rights in, any such third-party materials.
+
+5. Reservation of Rights
+
+All rights not expressly granted under this License are reserved.
+
+6. Termination
+
+This License automatically terminates if you violate its terms. Upon termination, you
+must cease all use of the Work and destroy copies in your possession or control,
+except where retention is required by law.
+
+7. Disclaimer
+
+THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE WORK OR THE USE
+OR OTHER DEALINGS IN THE WORK.
