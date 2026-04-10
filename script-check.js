@@ -1,184 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Halo</title>
-  <style>
-    :root {
-      --bg: #030712;
-      --panel: rgba(8, 15, 30, 0.82);
-      --panel-border: rgba(255,255,255,0.1);
-      --text: #eff6ff;
-      --muted: #93a4bf;
-      --cyan: #22d3ee;
-      --blue: #60a5fa;
-      --green: #86efac;
-      --pink: #f9a8d4;
-      --warn: #fde68a;
-      --bad: #fda4af;
-    }
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0;
-      min-height: 100%;
-      background:
-        radial-gradient(circle at top left, rgba(34, 211, 238, 0.12), transparent 30%),
-        radial-gradient(circle at bottom right, rgba(96, 165, 250, 0.12), transparent 26%),
-        var(--bg);
-      color: var(--text);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-    .app {
-      min-height: 100vh;
-      display: grid;
-      grid-template-columns: minmax(0, 1.5fr) minmax(340px, 470px);
-      gap: 18px;
-      padding: 18px;
-    }
-    .stage, .panel {
-      border-radius: 28px;
-      overflow: hidden;
-      border: 1px solid var(--panel-border);
-      background: var(--panel);
-      backdrop-filter: blur(16px);
-      box-shadow: 0 16px 44px rgba(0,0,0,0.3);
-    }
-    .stage { position: relative; min-height: 78vh; }
-    .viewport { position: relative; width: 100%; min-height: 78vh; height: 100%; background: rgba(0,0,0,0.28); }
-    video, canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-    canvas { pointer-events: none; }
-    .toolbar {
-      position: absolute; inset: 14px 14px auto 14px; z-index: 5;
-      display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; pointer-events: none;
-    }
-    .toolbar-group { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; pointer-events: auto; }
-    button, select, .pill {
-      border-radius: 999px; border: 1px solid rgba(255,255,255,0.15);
-      background: rgba(4,10,22,0.84); color: var(--text); font: inherit;
-    }
-    button, select { padding: 10px 14px; }
-    button { cursor: pointer; }
-    button.primary {
-      background: linear-gradient(135deg, rgba(34,211,238,0.25), rgba(96,165,250,0.18));
-      border-color: rgba(96,165,250,0.58);
-    }
-    button.danger { border-color: rgba(253,164,175,0.45); color: #ffe4eb; }
-    .pill { padding: 10px 14px; font-size: 13px; color: var(--muted); }
-    .panel { display: flex; flex-direction: column; }
-    .panel-header { padding: 22px 22px 14px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-    .eyebrow { color: var(--cyan); letter-spacing: 0.12em; text-transform: uppercase; font-size: 11px; font-weight: 700; margin-bottom: 8px; }
-    h1 { margin: 0 0 8px; font-size: 29px; line-height: 1.06; }
-    .sub { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
-    .panel-body { padding: 18px 22px 22px; display: grid; gap: 16px; overflow: auto; align-content: start; }
-    .card { border-radius: 22px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); padding: 16px; }
-    .card h2 { margin: 0 0 12px; font-size: 15px; }
-    .output { min-height: 120px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.24); padding: 14px; font-size: 18px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
-    .metrics { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
-    .metric { border-radius: 16px; padding: 12px; border: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.2); }
-    .metric-label { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
-    .metric select { width: 100%; padding: 9px 12px; background: rgba(4,10,22,0.82); }
-    .toggle-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
-    .toggle-chip { display: inline-flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; background: rgba(255,255,255,0.03); font-size: 13px; color: var(--muted); }
-    .toggle-chip input { accent-color: var(--cyan); }
-    .legend { display: grid; gap: 8px; color: var(--muted); font-size: 14px; }
-    .list { margin: 0; padding-left: 18px; color: var(--muted); display: grid; gap: 8px; font-size: 14px; line-height: 1.5; }
-    .small { color: var(--muted); font-size: 12px; line-height: 1.55; margin: 8px 0 0; }
-    .ok { color: var(--green); }
-    .warn { color: var(--warn); }
-    .bad { color: var(--bad); }
-    @media (max-width: 1160px) { .app { grid-template-columns: 1fr; } .stage, .viewport { min-height: 60vh; } }
-  </style>
-</head>
-<body>
-  <div class="app">
-    <section class="stage">
-      <div class="toolbar">
-        <div class="toolbar-group">
-          <button id="startCameraBtn" class="primary">Start camera</button>
-          <button id="stopCameraBtn">Stop camera</button>
-          <select id="cameraSelect"><option value="">Default camera</option></select>
-          <select id="placementMode"><option value="sculpt" selected>One-hand sculpt</option><option value="rectangle">Rectangle trace</option></select>
-          <select id="anchorMode"><option value="surface" selected>3D surface</option><option value="air">Air draw</option></select>
-          <button id="drawBtn">Start placement</button>
-          <button id="finishBtn">Finish placement</button>
-          <button id="pinBtn">Pin keyboard</button>
-          <button id="rotateLeftBtn">Rotate ↺</button>
-          <button id="rotateRightBtn">Rotate ↻</button>
-          <button id="voiceBtn">Start voice</button>
-          <button id="resetBtn" class="danger">Reset</button>
-        </div>
-        <div class="toolbar-group">
-          <span id="phaseBadge" class="pill">Phase: calibration</span>
-          <span id="statusBadge" class="pill">Ready</span>
-        </div>
-      </div>
-      <div class="viewport">
-        <video id="video" autoplay playsinline muted></video>
-        <canvas id="overlay"></canvas>
-      </div>
-    </section>
 
-    <aside class="panel">
-      <div class="panel-header">
-        <div class="eyebrow">Halo</div>
-        <h1>Halo Surface Keyboard</h1>
-        <p class="sub">Camera-first virtual keyboard with sculpt placement, multi-finger typing, optional voice commands, and press-based triggering.</p>
-      </div>
-      <div class="panel-body">
-        <section class="card">
-          <h2>Typed output</h2>
-          <div id="output" class="output"></div>
-        </section>
-        <section class="card">
-          <h2>Settings</h2>
-          <div class="metrics">
-            <div class="metric"><div class="metric-label">Trigger mode</div><select id="selectionMode"><option value="press" selected>Press gesture</option><option value="pinch">Pinch</option><option value="dwell">Dwell</option><option value="hybrid">Hybrid</option></select></div>
-            <div class="metric"><div class="metric-label">View mode</div><select id="mirrorMode"><option value="natural" selected>Natural</option><option value="selfie">Selfie</option><option value="raw">Raw</option></select></div>
-            <div class="metric"><div class="metric-label">Keyboard scale</div><select id="scaleMode"><option value="0.85">Compact</option><option value="1" selected>Normal</option><option value="1.2">Large</option><option value="1.4">XL</option></select></div>
-            <div class="metric"><div class="metric-label">Accuracy</div><select id="accuracyMode"><option value="fast">Fast</option><option value="balanced" selected>Balanced</option><option value="stable">Stable</option></select></div>
-            <div class="metric"><div class="metric-label">Dwell speed</div><select id="dwellMode"><option value="760">Slow</option><option value="520" selected>Normal</option><option value="320">Fast</option></select></div>
-            <div class="metric"><div class="metric-label">Neon intensity</div><select id="neonMode"><option value="0.7">Soft</option><option value="1" selected>Normal</option><option value="1.35">Bright</option></select></div>
-          </div>
-          <div class="toggle-row">
-            <label class="toggle-chip"><input id="soundToggle" type="checkbox" checked> subtle sound</label>
-            <label class="toggle-chip"><input id="vibrationToggle" type="checkbox" checked> vibration</label>
-            <label class="toggle-chip"><input id="voiceCommandToggle" type="checkbox"> voice letters/actions</label>
-            <label class="toggle-chip"><input id="wordRecognitionToggle" type="checkbox"> word recognition</label>
-          </div>
-          <p class="small">Natural view keeps overlay motion aligned for front cameras. Selfie flips only the video preview. Raw leaves the incoming camera unchanged.</p>
-        </section>
-        <section class="card">
-          <h2>How to use</h2>
-          <ol class="list">
-            <li>Start the camera.</li>
-            <li>Use <strong>One-hand sculpt</strong> to pinch, move, resize, and rotate the keyboard with one hand, or use <strong>Rectangle trace</strong> to draw a placement area.</li>
-            <li>Pin the keyboard.</li>
-            <li>Type with any fingertips. Press mode uses a short poke toward the camera plane; dwell and pinch are optional.</li>
-            <li>Optional voice commands: say <strong>type b</strong>, <strong>press enter</strong>, <strong>bravo</strong>, <strong>space</strong>.</li>
-          </ol>
-        </section>
-        <section class="card">
-          <h2>Live state</h2>
-          <div class="legend">
-            <div><strong>Tracking:</strong> <span id="trackingText" class="warn">Waiting for camera</span></div>
-            <div><strong>Placement:</strong> <span id="shapeText">—</span></div>
-            <div><strong>Mode:</strong> <span id="modeText">surface / sculpt</span></div>
-            <div><strong>Rotation:</strong> <span id="rotationText">0°</span></div>
-            <div><strong>Hovered keys:</strong> <span id="hoveredText">—</span></div>
-            <div><strong>Active fingertips:</strong> <span id="fingertipsText">0</span></div>
-            <div><strong>Trigger:</strong> <span id="triggerText">—</span></div>
-            <div><strong>Min pinch:</strong> <span id="pinchText">—</span></div>
-            <div><strong>Press depth:</strong> <span id="pressText">—</span></div>
-            <div><strong>Voice:</strong> <span id="voiceStatusText">off</span></div>
-            <div><strong>Last heard:</strong> <span id="heardText">—</span></div>
-          </div>
-        </section>
-      </div>
-    </aside>
-  </div>
+import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.mjs";
 
-<script type="module">
 const KEY_ROWS = [
   ["Q","W","E","R","T","Y","U","I","O","P"],
   ["A","S","D","F","G","H","J","K","L"],
@@ -236,9 +58,6 @@ const els = {
 
 const state = {
   handLandmarker: null,
-  FilesetResolver: null,
-  HandLandmarker: null,
-  modelLoadPromise: null,
   stream: null,
   running: false,
   latestResult: null,
@@ -339,37 +158,25 @@ function wireUi() {
 
 async function createHandLandmarker() {
   if (state.handLandmarker) return state.handLandmarker;
-  if (state.modelLoadPromise) return state.modelLoadPromise;
-  state.modelLoadPromise = (async () => {
-    setStatus("Camera running • loading hand tracking…", "warn");
-    const module = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.mjs");
-    state.FilesetResolver = module.FilesetResolver;
-    state.HandLandmarker = module.HandLandmarker;
-    const vision = await state.FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
-    state.handLandmarker = await state.HandLandmarker.createFromOptions(vision, {
-      baseOptions: {
-        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-        delegate: "GPU"
-      },
-      runningMode: "VIDEO",
-      numHands: 2,
-      minHandDetectionConfidence: 0.55,
-      minHandPresenceConfidence: 0.55,
-      minTrackingConfidence: 0.55
-    });
-    setStatus("Camera running", "ok");
-    return state.handLandmarker;
-  })();
-  try {
-    return await state.modelLoadPromise;
-  } catch (error) {
-    state.modelLoadPromise = null;
-    throw error;
-  }
+  setStatus("Loading hand tracking model…", "warn");
+  const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
+  state.handLandmarker = await HandLandmarker.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+      delegate: "GPU"
+    },
+    runningMode: "VIDEO",
+    numHands: 2,
+    minHandDetectionConfidence: 0.55,
+    minHandPresenceConfidence: 0.55,
+    minTrackingConfidence: 0.55
+  });
+  return state.handLandmarker;
 }
 
 async function startCamera(deviceId = "") {
   try {
+    await createHandLandmarker();
     stopCamera();
     let constraints = deviceId
       ? { video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }
@@ -389,18 +196,10 @@ async function startCamera(deviceId = "") {
     state.running = true;
     resizeCanvas();
     await refreshCameraList();
-    setStatus("Camera starting…", "warn");
-    els.trackingText.textContent = "Camera is on • loading tracking";
+    setStatus("Camera running", "ok");
+    els.trackingText.textContent = "Show your hand";
     els.trackingText.className = "warn";
     requestAnimationFrame(loop);
-    createHandLandmarker().catch((error) => {
-      console.error(error);
-      if (state.running) {
-        setStatus(`Tracking unavailable: ${String(error?.message || error)}`, "warn");
-        els.trackingText.textContent = "Camera on • hand tracking unavailable";
-        els.trackingText.className = "warn";
-      }
-    });
   } catch (error) {
     console.error(error);
     setStatus(`Camera failed: ${String(error?.message || error)}`, "bad");
@@ -510,13 +309,9 @@ function loop(now) {
   if (!state.running) return;
   resizeCanvas();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  if (video.currentTime !== state.lastVideoTime) {
+  if (video.currentTime !== state.lastVideoTime && state.handLandmarker) {
     state.lastVideoTime = video.currentTime;
-    if (state.handLandmarker) {
-      state.latestResult = state.handLandmarker.detectForVideo(video, now);
-    } else {
-      state.latestResult = null;
-    }
+    state.latestResult = state.handLandmarker.detectForVideo(video, now);
   }
   renderFrame(now, state.latestResult);
   requestAnimationFrame(loop);
@@ -1085,6 +880,3 @@ function dot(a,b) { return a.x*b.x + a.y*b.y; }
 function distance(a,b) { return Math.hypot(a.x-b.x, a.y-b.y); }
 function lerp(a,b,t) { return a + (b-a)*t; }
 function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
-</script>
-</body>
-</html>
