@@ -1,79 +1,37 @@
 # Halo
 
-https://iusmusic.github.io/Halo/
+Halo is a static browser app for a camera-based virtual keyboard that can be hosted on GitHub Pages.
 
-A static GitHub Pages web app prototype for a camera-based virtual keyboard.
+## New in this update
 
-Users draw a rectangle in the air over a visible surface, the app converts that traced area into a neon keyboard pad, and then the keyboard can be pinned in place for typing with fingertip motion plus pinch or dwell selection.
+- Project name changed to **Halo**
+- **Press gesture mode** added, so a short poke motion can trigger a key instead of relying only on hover timing
+- **3D surface / air mode toggle** added
+- **One-hand sculpt placement** added:
+  - pinch to grab and place the keyboard
+  - open or close the pinch slightly to resize it
+  - wrist direction helps set orientation
+- **Rotate left / right** controls added
+- **Mirror mode off by default** to reduce front-camera reversal issues
+- **All ten fingertips** are supported for typing
+- **Subtle feedback sound** and **vibration** toggles added
+- Optional **voice letters/actions** mode added for commands like `type b`, `press enter`, `backspace`, or NATO words like `bravo`
+- Optional **word recognition** mode added for normal spoken words
 
+## Notes
 
-## Core flow
+This is still a browser-only approximation of a surface keyboard. The 3D surface feel and press gesture use hand pose and depth estimates from the camera, not full AR plane detection.
 
-1. Start the camera.
-2. Pick a built-in or external camera.
-3. Draw a rectangle in the air where the keyboard should live.
-4. Finish the rectangle and preview the detected pad.
-5. Pin the keyboard.
-6. Type by hovering and using pinch, dwell, or both.
+## Run locally
 
-## Current behavior
-
-This starter is intentionally lightweight and GitHub Pages friendly.
-
-- The app runs entirely in the browser.
-- Camera access happens with `getUserMedia()`.
-- Hand tracking uses MediaPipe in the browser.
-- The keyboard is treated as a pinned 2D pad in camera view.
-- Accuracy is best when the camera is stationary.
-
-## Important limitations
-
-This is an MVP, not a production spatial tracking system.
-
-- It does not yet perform true 3D surface anchoring.
-- It does not yet persist a calibrated plane if the camera moves a lot.
-- Rectangle detection is inferred from the traced path and may need cleaner calibration for reliable long sessions.
-- Finger tap detection is based on hover and pinch heuristics, not full physical contact detection.
-
-## Good next upgrades
-
-- Manual corner adjustment after rectangle detection
-- Perspective correction and keystone adjustment
-- Saved calibration presets
-- Better multi-hand logic
-- Worker-based inference for smoother performance on slower devices
-- Optional text export and clipboard copy
-- AR-style surface anchoring for supported devices
+Serve over HTTPS or use GitHub Pages. Camera access will not work from an insecure local file URL in most browsers.
 
 ## Deploy to GitHub Pages
 
-This repo uses a GitHub Actions workflow for deployment.
+1. Create a GitHub repository
+2. Upload all files from this folder
+3. In GitHub, open **Settings → Pages**
+4. Set the source to **GitHub Actions**
+5. Push to `main`
 
-### Steps
-
-1. Create a new GitHub repository.
-2. Upload these files to the repository root.
-3. Push to your default branch, usually `main`.
-4. In GitHub, open **Settings → Pages**.
-5. Under **Build and deployment**, set **Source** to **GitHub Actions**.
-6. The included workflow will deploy the site automatically on push.
-
-## Camera and HTTPS note
-
-Camera access in browsers requires HTTPS or another secure context. GitHub Pages is suitable for this because it serves sites over HTTPS.
-
-## Local testing
-
-You can open `index.html` directly for layout work, but camera access is more reliable when served locally over HTTP from a dev server.
-
-Examples:
-
-```bash
-python3 -m http.server 8080
-```
-
-Then open:
-
-```text
-http://localhost:8080
-```
+The included workflow will publish the site automatically.
