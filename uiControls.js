@@ -7,7 +7,7 @@ export function bindUI(state) {
     "cameraSelect","placementMode","anchorMode","interactionMode","drawBtn","finishBtn","pinBtn",
     "rotateLeftBtn","rotateRightBtn","resetBtn","selectionMode","mirrorMode","scaleMode","accuracyMode",
     "dwellMode","neonMode","soundToggle","vibrationToggle","bedModeToggle","lowLightToggle","touchFallbackToggle",
-    "mirrorDockMode","mirrorSizeMode","output","phaseBadge","statusBadge","trackingText","shapeText","modeText",
+    "mirrorDockMode","mirrorSizeMode","mirrorEnabledToggle","output","phaseBadge","statusBadge","trackingText","shapeText","modeText",
     "rotationText","hoveredText","fingertipsText","triggerText","pinchText","pressText","calibrationText",
     "profileText","lightText","xrText","voiceTranscript","tourModal","tourDismissBtn","calibrationModal",
     "calibrationTitle","calibrationBody","calibrationSkipBtn","calibrationCaptureBtn"
@@ -32,14 +32,16 @@ export function bindUI(state) {
   ui.touchFallbackToggle.checked = state.ui.touchFallbackEnabled;
   ui.mirrorDockMode.value = state.ui.mirrorDock;
   ui.mirrorSizeMode.value = state.ui.mirrorSize;
+  ui.mirrorEnabledToggle.checked = state.ui.mirrorEnabled !== false;
 
-  applyMirrorDock(ui, state.ui.mirrorDock, state.ui.mirrorSize);
+  applyMirrorDock(ui, state.ui.mirrorDock, state.ui.mirrorSize, state.ui.mirrorEnabled !== false);
   document.body.classList.toggle("low-light", state.ui.lowLightMode);
   return ui;
 }
 
-export function applyMirrorDock(ui, dock, size) {
-  ui.mirrorOverlay.className = `mirror-overlay ${dock} ${size}`;
+export function applyMirrorDock(ui, dock, size, enabled = true) {
+  ui.mirrorOverlay.className = `mirror-overlay ${dock} ${size}${enabled ? "" : " is-hidden"}`;
+  ui.mirrorOverlay.setAttribute("aria-hidden", enabled ? "false" : "true");
 }
 
 export function syncMirrorView(ui, mirrored) {

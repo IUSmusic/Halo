@@ -80,6 +80,7 @@ const DEFAULT_STATE = {
     touchFallbackEnabled: true,
     mirrorDock: "right",
     mirrorSize: "medium",
+    mirrorEnabled: true,
   },
 };
 
@@ -154,12 +155,18 @@ ui.touchFallbackToggle.addEventListener("change", () => {
 });
 ui.mirrorDockMode.addEventListener("change", () => {
   setUIValue("mirrorDock", ui.mirrorDockMode.value);
-  applyMirrorDock(ui, state.ui.mirrorDock, state.ui.mirrorSize);
+  applyMirrorDock(ui, state.ui.mirrorDock, state.ui.mirrorSize, state.ui.mirrorEnabled !== false);
 });
 ui.mirrorSizeMode.addEventListener("change", () => {
   setUIValue("mirrorSize", ui.mirrorSizeMode.value);
-  applyMirrorDock(ui, state.ui.mirrorDock, state.ui.mirrorSize);
+  applyMirrorDock(ui, state.ui.mirrorDock, state.ui.mirrorSize, state.ui.mirrorEnabled !== false);
   renderer.resize();
+});
+ui.mirrorEnabledToggle.addEventListener("change", () => {
+  setUIValue("mirrorEnabled", ui.mirrorEnabledToggle.checked);
+  applyMirrorDock(ui, state.ui.mirrorDock, state.ui.mirrorSize, state.ui.mirrorEnabled !== false);
+  renderer.resize();
+  showToast(ui, state.ui.mirrorEnabled !== false ? "Mirror overlay on" : "Mirror overlay off", state.ui.mirrorEnabled !== false ? "ok" : "warn", 1800);
 });
 ui.bedModeToggle.addEventListener("change", async () => {
   setUIValue("bedMode", ui.bedModeToggle.checked);
@@ -487,7 +494,7 @@ function undoVoiceInsert() {
 }
 
 function handleMirrorPointer(event) {
-  if (!state.ui.touchFallbackEnabled) return;
+  if (!state.ui.touchFallbackEnabled || state.ui.mirrorEnabled === false) return;
   const tester = renderer.makeMirrorHitTester(mirrorState.layout, mirrorState.suggestions);
   const hit = tester(event.clientX, event.clientY);
   if (!hit) return;
@@ -542,6 +549,7 @@ function renderFrame(now, result) {
       drawPathPoints: state.drawnPoints,
       pointer,
       mirrorTouchEnabled: state.ui.touchFallbackEnabled,
+      mirrorEnabled: state.ui.mirrorEnabled !== false,
       lowLightMode: currentLowLightMode(),
       suggestions: mirrorState.suggestions,
     });
@@ -723,6 +731,7 @@ function renderFrame(now, result) {
     drawPathPoints: state.drawnPoints,
     pointer,
     mirrorTouchEnabled: state.ui.touchFallbackEnabled,
+    mirrorEnabled: state.ui.mirrorEnabled !== false,
     lowLightMode: currentLowLightMode(),
     suggestions: mirrorState.suggestions,
   });

@@ -89,6 +89,7 @@ video, #overlay {
 .mirror-overlay.small.bottom { width: min(90%, 420px); height: 118px; }
 .mirror-overlay.medium.bottom { width: min(92%, 540px); height: 136px; }
 .mirror-overlay.large.bottom { width: min(95%, 680px); height: 156px; }
+.mirror-overlay.is-hidden { display: none; pointer-events: none; }
 .mirrored { transform: scaleX(-1); }
 .toolbar {
   display: flex;
@@ -283,6 +284,7 @@ h1 {
   line-height: 1.55;
   margin: 8px 0 0;
 }
+.compact-top { margin-top: 12px; }
 .toggle-row {
   display: flex;
   gap: 10px;

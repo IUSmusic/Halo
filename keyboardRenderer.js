@@ -32,12 +32,12 @@ export class KeyboardRenderer {
     this.mirrorCtx.clearRect(0, 0, this.mirror.clientWidth, this.mirror.clientHeight);
   }
 
-  drawFrame({ anchor, layout, hoveredLabels, cursors, now, neonStrength, phase, drawPathPoints, pointer, mirrorTouchEnabled, lowLightMode, suggestions = [] }) {
+  drawFrame({ anchor, layout, hoveredLabels, cursors, now, neonStrength, phase, drawPathPoints, pointer, mirrorTouchEnabled, mirrorEnabled = true, lowLightMode, suggestions = [] }) {
     this.clear();
     if (anchor) {
       this.drawBoard(anchor, layout, hoveredLabels, cursors, now, neonStrength, lowLightMode);
-      this.drawMirror(layout, hoveredLabels, cursors, suggestions, mirrorTouchEnabled);
-    } else {
+      if (mirrorEnabled) this.drawMirror(layout, hoveredLabels, cursors, suggestions, mirrorTouchEnabled);
+    } else if (mirrorEnabled) {
       this.drawMirror(layout, hoveredLabels, cursors, suggestions, mirrorTouchEnabled, true);
     }
     this.drawTrails(cursors, neonStrength);
