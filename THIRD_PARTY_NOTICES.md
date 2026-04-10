@@ -38,29 +38,3 @@ Source references:
 
 ### Maintainer note
 If you replace any of these files with newer upstream versions, keep this notice updated and preserve any upstream copyright, NOTICE, and license information distributed with them.
-
----
-
-## Recommended repository setup
-
-Keep your own project license at the repo root, for example:
-- `LICENSE` for your app code
-
-And keep third-party attribution in one of these forms:
-- `THIRD_PARTY_NOTICES.md` at the repo root, or
-- `external/README.md` plus a copy of the applicable upstream license text if you redistribute it separately.
-
-## Suggested short README text for `external/README.md`
-
-```md
-This folder contains vendored MediaPipe runtime/model assets used by the app for offline execution.
-
-Upstream package/project:
-- `@mediapipe/tasks-vision`
-- MediaPipe / Google AI Edge
-
-Upstream license:
-- Apache License 2.0
-
-See `../THIRD_PARTY_NOTICES.md` for attribution details.
-```
