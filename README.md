@@ -18,6 +18,14 @@ The project is designed as a static web app with no backend requirement. It supp
 
 **Website:** https://iusmusic.github.io/Halo/
 
+## What’s New
+
+- Added Pointer Mode with air-mouse navigation
+- Added selectable control modes: index finger, any finger, or whole hand
+- Added air gestures for click, drag, scroll, and pinch-zoom
+- Improved offline support with local MediaPipe assets
+- Added Bed Mode and mirror overlay controls
+
 ## Highlights
 
 - Camera-based hand tracking powered by MediaPipe Tasks Vision
