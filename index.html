@@ -7,7 +7,7 @@
   <style>
     :root {
       --bg: #030712;
-      --panel: rgba(8, 15, 30, 0.78);
+      --panel: rgba(8, 15, 30, 0.8);
       --panel-border: rgba(255, 255, 255, 0.1);
       --text: #eff6ff;
       --muted: #93a4bf;
@@ -20,7 +20,6 @@
     }
 
     * { box-sizing: border-box; }
-
     html, body {
       margin: 0;
       min-height: 100%;
@@ -35,13 +34,12 @@
     .app {
       min-height: 100vh;
       display: grid;
-      grid-template-columns: minmax(0, 1.45fr) minmax(340px, 440px);
+      grid-template-columns: minmax(0, 1.5fr) minmax(340px, 470px);
       gap: 18px;
       padding: 18px;
     }
 
-    .stage,
-    .panel {
+    .stage, .panel {
       border-radius: 28px;
       overflow: hidden;
       border: 1px solid var(--panel-border);
@@ -54,6 +52,26 @@
       position: relative;
       min-height: 78vh;
     }
+
+    .viewport {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 78vh;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(2, 8, 18, 0.18), rgba(2, 8, 18, 0.42));
+    }
+
+    video, canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    canvas { pointer-events: none; }
+    .mirrored { transform: scaleX(-1); }
 
     .toolbar {
       position: absolute;
@@ -68,87 +86,42 @@
 
     .toolbar-group {
       display: flex;
-      flex-wrap: wrap;
       gap: 10px;
+      flex-wrap: wrap;
       align-items: center;
       pointer-events: auto;
     }
 
-    button,
-    select,
-    .pill {
+    button, select, .pill {
       border-radius: 999px;
       border: 1px solid rgba(255, 255, 255, 0.15);
-      background: rgba(4, 10, 22, 0.78);
+      background: rgba(4, 10, 22, 0.8);
       color: var(--text);
       font: inherit;
     }
 
-    button,
-    select {
+    button, select {
       padding: 10px 14px;
-      transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+      transition: transform 140ms ease, border-color 140ms ease;
     }
-
-    button:hover,
-    select:hover {
+    button:hover, select:hover {
       transform: translateY(-1px);
       border-color: rgba(96, 165, 250, 0.5);
     }
-
     button { cursor: pointer; }
-
     button.primary {
       background: linear-gradient(135deg, rgba(34, 211, 238, 0.25), rgba(96, 165, 250, 0.18));
       border-color: rgba(96, 165, 250, 0.58);
     }
+    button.secondary { border-color: rgba(34, 211, 238, 0.38); }
+    button.danger { border-color: rgba(253, 164, 175, 0.45); color: #ffe4eb; }
+    .pill { padding: 10px 14px; font-size: 13px; color: var(--muted); }
 
-    button.secondary {
-      border-color: rgba(34, 211, 238, 0.38);
-    }
-
-    button.danger {
-      border-color: rgba(253, 164, 175, 0.45);
-      color: #ffe4eb;
-    }
-
-    .pill {
-      padding: 10px 14px;
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    .viewport {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      min-height: 78vh;
-      overflow: hidden;
-      background: linear-gradient(180deg, rgba(2, 8, 18, 0.18), rgba(2, 8, 18, 0.42));
-    }
-
-    video,
-    canvas {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    canvas { pointer-events: none; }
-    .mirrored { transform: scaleX(-1); }
-
-    .panel {
-      display: flex;
-      flex-direction: column;
-    }
-
+    .panel { display: flex; flex-direction: column; }
     .panel-header {
       padding: 22px 22px 14px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
-
     .eyebrow {
       color: var(--cyan);
       letter-spacing: 0.12em;
@@ -157,20 +130,17 @@
       font-weight: 700;
       margin-bottom: 8px;
     }
-
     h1 {
       margin: 0 0 8px;
       font-size: 29px;
       line-height: 1.06;
     }
-
     .sub {
       margin: 0;
       color: var(--muted);
       font-size: 14px;
       line-height: 1.55;
     }
-
     .panel-body {
       padding: 18px 22px 22px;
       display: grid;
@@ -178,21 +148,18 @@
       overflow: auto;
       align-content: start;
     }
-
     .card {
       border-radius: 22px;
       border: 1px solid rgba(255, 255, 255, 0.08);
       background: rgba(255, 255, 255, 0.03);
       padding: 16px;
     }
-
     .card h2 {
       margin: 0 0 12px;
       font-size: 15px;
     }
-
     .output {
-      min-height: 150px;
+      min-height: 130px;
       border-radius: 18px;
       border: 1px solid rgba(255, 255, 255, 0.08);
       background: rgba(0, 0, 0, 0.24);
@@ -202,32 +169,33 @@
       white-space: pre-wrap;
       overflow-wrap: anywhere;
     }
-
     .metrics {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
     }
-
     .metric {
       border-radius: 16px;
       padding: 12px;
       border: 1px solid rgba(255, 255, 255, 0.06);
       background: rgba(0, 0, 0, 0.2);
     }
-
     .metric-label {
       color: var(--muted);
       font-size: 12px;
       margin-bottom: 6px;
     }
-
     .metric select {
       width: 100%;
       padding: 9px 12px;
       background: rgba(4, 10, 22, 0.82);
     }
-
+    .legend {
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
     .list {
       margin: 0;
       padding-left: 18px;
@@ -237,21 +205,35 @@
       font-size: 14px;
       line-height: 1.5;
     }
-
-    .legend {
-      display: grid;
-      gap: 8px;
+    .small {
       color: var(--muted);
-      font-size: 14px;
+      font-size: 12px;
+      line-height: 1.55;
+      margin: 8px 0 0;
     }
-
-    .legend strong { color: var(--text); }
-    .small { color: var(--muted); font-size: 12px; line-height: 1.55; margin: 8px 0 0; }
+    .toggle-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .toggle-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.03);
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .toggle-chip input { accent-color: var(--cyan); }
     .ok { color: var(--green); }
     .warn { color: var(--warn); }
     .bad { color: var(--bad); }
 
-    @media (max-width: 1120px) {
+    @media (max-width: 1160px) {
       .app { grid-template-columns: 1fr; }
       .stage, .viewport { min-height: 60vh; }
     }
@@ -263,12 +245,20 @@
       <div class="toolbar">
         <div class="toolbar-group">
           <button id="startCameraBtn" class="primary">Start camera</button>
-          <select id="cameraSelect" title="Camera source">
-            <option value="">Default camera</option>
+          <select id="cameraSelect"><option value="">Default camera</option></select>
+          <select id="placementMode">
+            <option value="sculpt" selected>One-hand sculpt</option>
+            <option value="rectangle">Rectangle trace</option>
           </select>
-          <button id="drawBtn" class="secondary">Start drawing rectangle</button>
-          <button id="finishBtn">Finish rectangle</button>
+          <select id="anchorMode">
+            <option value="surface" selected>3D surface</option>
+            <option value="air">Air draw</option>
+          </select>
+          <button id="drawBtn" class="secondary">Start placement</button>
+          <button id="finishBtn">Finish placement</button>
           <button id="pinBtn">Pin keyboard</button>
+          <button id="rotateLeftBtn">Rotate ↺</button>
+          <button id="rotateRightBtn">Rotate ↻</button>
           <button id="resetBtn" class="danger">Reset</button>
         </div>
         <div class="toolbar-group">
@@ -276,7 +266,6 @@
           <span id="statusBadge" class="pill">Camera idle</span>
         </div>
       </div>
-
       <div class="viewport">
         <video id="video" autoplay playsinline muted></video>
         <canvas id="overlay"></canvas>
@@ -285,13 +274,10 @@
 
     <aside class="panel">
       <div class="panel-header">
-        <div class="eyebrow">Pinned surface keyboard</div>
-        <h1>GhostBoard Surface Pad</h1>
-        <p class="sub">
-          First the user draws a rectangle in the air over any visible surface. The app turns that shape into a neon 2D keyboard pad, then pins it in place for typing while the camera remains still.
-        </p>
+        <div class="eyebrow">Halo</div>
+        <h1>Halo</h1>
+        <p class="sub">A camera-based surface keyboard that can be placed with one hand, rotated, pinned on a 3D-looking plane, and typed with a press gesture instead of only hover timing.</p>
       </div>
-
       <div class="panel-body">
         <section class="card">
           <h2>Typed output</h2>
@@ -299,21 +285,22 @@
         </section>
 
         <section class="card">
-          <h2>Calibration and typing settings</h2>
+          <h2>Controls and feedback</h2>
           <div class="metrics">
             <div class="metric">
-              <div class="metric-label">Selection mode</div>
+              <div class="metric-label">Trigger mode</div>
               <select id="selectionMode">
+                <option value="press" selected>Press gesture</option>
                 <option value="pinch">Pinch</option>
                 <option value="dwell">Dwell</option>
-                <option value="both" selected>Both</option>
+                <option value="hybrid">Hybrid</option>
               </select>
             </div>
             <div class="metric">
               <div class="metric-label">Mirror view</div>
               <select id="mirrorMode">
-                <option value="on" selected>On</option>
-                <option value="off">Off</option>
+                <option value="off" selected>Off</option>
+                <option value="on">On</option>
               </select>
             </div>
             <div class="metric">
@@ -322,7 +309,7 @@
                 <option value="0.85">Compact</option>
                 <option value="1" selected>Normal</option>
                 <option value="1.2">Large</option>
-                <option value="1.4">XL</option>
+                <option value="1.45">XL</option>
               </select>
             </div>
             <div class="metric">
@@ -346,45 +333,47 @@
               <select id="neonMode">
                 <option value="0.7">Soft</option>
                 <option value="1" selected>Normal</option>
-                <option value="1.4">Bright</option>
+                <option value="1.35">Bright</option>
               </select>
             </div>
           </div>
-          <p class="small">
-            External cameras work too as long as the browser exposes them as video devices. After the first camera permission grant, use the camera selector to switch sources.
-          </p>
+          <div class="toggle-row">
+            <label class="toggle-chip"><input id="soundToggle" type="checkbox" checked /> subtle sound</label>
+            <label class="toggle-chip"><input id="vibrationToggle" type="checkbox" checked /> vibration</label>
+          </div>
+          <p class="small">One-hand sculpt mode uses pinch to grab the ghost keyboard, move it, rotate with wrist angle, and resize using pinch opening. Rectangle mode remains available when you want explicit tracing.</p>
         </section>
 
         <section class="card">
-          <h2>How it works</h2>
+          <h2>How to use</h2>
           <ol class="list">
-            <li>Start the camera and choose the camera source you want.</li>
-            <li>Press <strong>Start drawing rectangle</strong> and trace a wide rectangle in the air over the surface where the keyboard should live.</li>
-            <li>Press <strong>Finish rectangle</strong> to preview the detected keyboard pad.</li>
-            <li>Press <strong>Pin keyboard</strong> to lock it in place.</li>
-            <li>Type by moving your fingertip over keys and using pinch, dwell, or both.</li>
+            <li>Start the camera and choose your camera source.</li>
+            <li>Pick <strong>One-hand sculpt</strong> to place the keyboard with one hand, or <strong>Rectangle trace</strong> to trace it manually.</li>
+            <li>In sculpt mode, pinch to grab the keyboard, move your hand to place it, open or close the pinch slightly to resize it, and rotate with your wrist.</li>
+            <li>Press <strong>Pin keyboard</strong> when the placement feels right.</li>
+            <li>Type with any fingertips. In <strong>Press gesture</strong> mode, a short poke motion triggers the key instead of simple hover timing.</li>
           </ol>
-          <p class="small">
-            Best accuracy comes from a stationary camera, a clearly visible surface, and a rectangle drawn as neatly as possible.
-          </p>
+          <p class="small">The 3D surface mode is still an in-browser approximation. It uses hand orientation and depth to give the keyboard a surface-like plane and press feel, but it is not full AR plane detection.</p>
         </section>
 
         <section class="card">
           <h2>Live state</h2>
           <div class="legend">
             <div><strong>Tracking:</strong> <span id="trackingText" class="warn">Waiting for camera</span></div>
-            <div><strong>Detected shape:</strong> <span id="shapeText">—</span></div>
-            <div><strong>Hovered key:</strong> <span id="hoveredText">—</span></div>
+            <div><strong>Placement:</strong> <span id="shapeText">—</span></div>
+            <div><strong>Mode:</strong> <span id="modeText">surface / sculpt</span></div>
+            <div><strong>Rotation:</strong> <span id="rotationText">0°</span></div>
+            <div><strong>Hovered keys:</strong> <span id="hoveredText">—</span></div>
+            <div><strong>Active fingertips:</strong> <span id="fingertipsText">0</span></div>
             <div><strong>Trigger:</strong> <span id="triggerText">—</span></div>
-            <div><strong>Pinch distance:</strong> <span id="pinchText">—</span></div>
+            <div><strong>Min pinch:</strong> <span id="pinchText">—</span></div>
+            <div><strong>Press depth:</strong> <span id="pressText">—</span></div>
           </div>
         </section>
 
         <section class="card">
-          <h2>Product direction</h2>
-          <p class="small">
-            This version treats the pinned keyboard as a 2D pad in the camera image, which is lightweight and deployable on GitHub Pages. A later version can add true surface tracking, corner refinement, keystone correction, and stronger tap recognition.
-          </p>
+          <h2>Notes</h2>
+          <p class="small">Typing with all ten fingers is supported, but the strongest future upgrade would be true tap-down detection against a calibrated plane and manual corner editing after placement.</p>
         </section>
       </div>
     </aside>
@@ -400,22 +389,24 @@
       ["SPACE", "BACKSPACE", "ENTER"]
     ];
 
-    const SPECIAL_LABELS = {
-      SPACE: "space",
-      BACKSPACE: "⌫",
-      ENTER: "⏎"
-    };
-
+    const TIP_INDICES = [4, 8, 12, 16, 20];
+    const SPECIAL_LABELS = { SPACE: "space", BACKSPACE: "⌫", ENTER: "⏎" };
+    const FINGER_NAMES = { 4: "thumb", 8: "index", 12: "middle", 16: "ring", 20: "pinky" };
     const KEY_LAYOUT = buildLayout(KEY_ROWS);
+
     const video = document.getElementById("video");
     const canvas = document.getElementById("overlay");
     const ctx = canvas.getContext("2d");
 
     const startCameraBtn = document.getElementById("startCameraBtn");
     const cameraSelect = document.getElementById("cameraSelect");
+    const placementModeEl = document.getElementById("placementMode");
+    const anchorModeEl = document.getElementById("anchorMode");
     const drawBtn = document.getElementById("drawBtn");
     const finishBtn = document.getElementById("finishBtn");
     const pinBtn = document.getElementById("pinBtn");
+    const rotateLeftBtn = document.getElementById("rotateLeftBtn");
+    const rotateRightBtn = document.getElementById("rotateRightBtn");
     const resetBtn = document.getElementById("resetBtn");
 
     const selectionModeEl = document.getElementById("selectionMode");
@@ -424,57 +415,110 @@
     const accuracyModeEl = document.getElementById("accuracyMode");
     const dwellModeEl = document.getElementById("dwellMode");
     const neonModeEl = document.getElementById("neonMode");
+    const soundToggleEl = document.getElementById("soundToggle");
+    const vibrationToggleEl = document.getElementById("vibrationToggle");
 
     const outputEl = document.getElementById("output");
     const phaseBadge = document.getElementById("phaseBadge");
     const statusBadge = document.getElementById("statusBadge");
     const trackingText = document.getElementById("trackingText");
     const shapeText = document.getElementById("shapeText");
+    const modeText = document.getElementById("modeText");
+    const rotationText = document.getElementById("rotationText");
     const hoveredText = document.getElementById("hoveredText");
+    const fingertipsText = document.getElementById("fingertipsText");
     const triggerText = document.getElementById("triggerText");
     const pinchText = document.getElementById("pinchText");
+    const pressText = document.getElementById("pressText");
 
     let handLandmarker = null;
     let stream = null;
     let running = false;
-    let lastVideoTime = -1;
     let latestResult = null;
+    let lastVideoTime = -1;
     let currentDeviceId = "";
 
     let phase = "calibration";
-    let drawing = false;
+    let placementMode = "sculpt";
+    let anchorMode = "surface";
+    let selectionMode = "press";
+    let mirror = false;
+    let keyboardScale = 1;
+    let dwellMs = 520;
+    let smoothingAlpha = 0.3;
+    let cooldownMs = 250;
+    let neonStrength = 1;
+    let rotationOffsetDeg = 0;
+    let soundEnabled = true;
+    let vibrationEnabled = true;
+
     let drawnPoints = [];
+    let drawing = false;
+    let sculptActive = false;
+    let sculptScale = 1;
+    let sculptAnchor = null;
     let previewAnchor = null;
     let pinnedAnchor = null;
-    let smoothedFinger = null;
 
     let typedText = "";
-    let hoveredKey = null;
-    let hoverSince = 0;
-    let lastCommittedKey = null;
-    let lastCommitTime = 0;
+    let lastGlobalCommitTime = 0;
+    let lastGlobalKey = "";
     let lastTrigger = "—";
 
-    let mirror = true;
-    let selectionMode = "both";
-    let dwellMs = 520;
-    let keyboardScale = 1;
-    let smoothingAlpha = 0.32;
-    let cooldownMs = 260;
-    let neonStrength = 1;
+    const smoothedPoints = new Map();
+    const fingerStates = new Map();
+    let audioCtx = null;
 
-    const PINCH_THRESHOLD = 0.055;
     const DRAW_POINT_STEP = 6;
+    const PINCH_THRESHOLD = 0.055;
+    const PRESS_DEPTH_THRESHOLD = 0.018;
+    const PRESS_VELOCITY_THRESHOLD = 0.0018;
+    const PRESS_RECOVERY_THRESHOLD = 0.008;
+    const GLOBAL_REPEAT_GUARD_MS = 90;
+    const ROTATION_STEP_DEG = 6;
 
     updateOutput();
-    syncMirror();
     refreshPhaseBadge();
+    updateRotationText();
+    updateModeText();
+    syncMirror();
 
     startCameraBtn.addEventListener("click", () => startCamera(currentDeviceId));
     cameraSelect.addEventListener("change", async () => {
       currentDeviceId = cameraSelect.value;
-      if (running) {
-        await startCamera(currentDeviceId);
+      if (running) await startCamera(currentDeviceId);
+    });
+
+    placementModeEl.addEventListener("change", () => {
+      placementMode = placementModeEl.value;
+      updateModeText();
+      drawBtn.textContent = placementMode === "sculpt" ? "Start sculpt" : "Start placement";
+    });
+
+    anchorModeEl.addEventListener("change", () => {
+      anchorMode = anchorModeEl.value;
+      updateModeText();
+      setStatus(anchorMode === "surface" ? "3D surface mode enabled" : "Air mode enabled", "ok");
+    });
+
+    selectionModeEl.addEventListener("change", () => { selectionMode = selectionModeEl.value; });
+    mirrorModeEl.addEventListener("change", () => { mirror = mirrorModeEl.value === "on"; syncMirror(); });
+    scaleModeEl.addEventListener("change", () => { keyboardScale = Number(scaleModeEl.value); });
+    dwellModeEl.addEventListener("change", () => { dwellMs = Number(dwellModeEl.value); });
+    neonModeEl.addEventListener("change", () => { neonStrength = Number(neonModeEl.value); });
+    soundToggleEl.addEventListener("change", () => { soundEnabled = soundToggleEl.checked; ensureAudio(); });
+    vibrationToggleEl.addEventListener("change", () => { vibrationEnabled = vibrationToggleEl.checked; });
+    accuracyModeEl.addEventListener("change", () => {
+      const mode = accuracyModeEl.value;
+      if (mode === "fast") {
+        smoothingAlpha = 0.5;
+        cooldownMs = 180;
+      } else if (mode === "stable") {
+        smoothingAlpha = 0.18;
+        cooldownMs = 320;
+      } else {
+        smoothingAlpha = 0.3;
+        cooldownMs = 250;
       }
     });
 
@@ -483,102 +527,131 @@
         setStatus("Start the camera first", "warn");
         return;
       }
-      drawing = true;
-      phase = "drawing";
+      phase = placementMode === "sculpt" ? "sculpting" : "drawing";
+      drawing = placementMode === "rectangle";
+      sculptActive = placementMode === "sculpt";
       drawnPoints = [];
       previewAnchor = null;
       pinnedAnchor = null;
-      shapeText.textContent = "Tracing rectangle";
-      hoveredText.textContent = "—";
-      triggerText.textContent = "—";
+      fingerStates.clear();
+      shapeText.textContent = placementMode === "sculpt" ? "Pinch to place and size" : "Tracing rectangle";
+      setStatus(placementMode === "sculpt" ? "Use one hand pinch to place Halo" : "Trace a rectangle with your index finger", "ok");
       refreshPhaseBadge();
-      setStatus("Trace a rectangle with your index finger", "ok");
     });
 
     finishBtn.addEventListener("click", () => {
-      if (drawnPoints.length < 20) {
-        setStatus("Draw a larger rectangle first", "warn");
-        return;
+      if (placementMode === "rectangle") {
+        if (drawnPoints.length < 20) {
+          setStatus("Draw a larger rectangle first", "warn");
+          return;
+        }
+        const anchor = anchorFromPath(drawnPoints);
+        if (!anchor) {
+          setStatus("Could not detect a usable shape", "bad");
+          return;
+        }
+        previewAnchor = anchor;
+      } else {
+        if (!sculptAnchor) {
+          setStatus("Pinch and place the keyboard first", "warn");
+          return;
+        }
+        previewAnchor = cloneAnchor(sculptAnchor);
       }
-      const anchor = anchorFromPath(drawnPoints);
-      if (!anchor) {
-        setStatus("Could not detect a usable keyboard shape", "bad");
-        return;
-      }
-      previewAnchor = anchor;
-      pinnedAnchor = null;
       drawing = false;
+      sculptActive = false;
       phase = "preview";
-      shapeText.textContent = `${Math.round(anchor.baseWidth)}×${Math.round(anchor.baseHeight)} preview`;
+      shapeText.textContent = `${Math.round(previewAnchor.baseWidth)}×${Math.round(previewAnchor.baseHeight)} preview`;
+      setStatus("Placement captured. Pin it when it looks right.", "ok");
       refreshPhaseBadge();
-      setStatus("Rectangle detected. Pin it when it looks right.", "ok");
     });
 
     pinBtn.addEventListener("click", () => {
-      if (!previewAnchor) {
-        setStatus("Finish a rectangle first", "warn");
+      const src = previewAnchor || sculptAnchor;
+      if (!src) {
+        setStatus("Create a keyboard placement first", "warn");
         return;
       }
-      pinnedAnchor = { ...previewAnchor };
+      pinnedAnchor = cloneAnchor(src);
       phase = "typing";
       drawing = false;
+      sculptActive = false;
+      fingerStates.clear();
+      setStatus("Halo pinned. Type with press, pinch, dwell, or hybrid.", "ok");
       refreshPhaseBadge();
-      setStatus("Keyboard pinned. Keep the camera still.", "ok");
+    });
+
+    rotateLeftBtn.addEventListener("click", () => {
+      rotationOffsetDeg -= ROTATION_STEP_DEG;
+      updateRotationText();
+      setStatus("Keyboard rotated left", "ok");
+    });
+
+    rotateRightBtn.addEventListener("click", () => {
+      rotationOffsetDeg += ROTATION_STEP_DEG;
+      updateRotationText();
+      setStatus("Keyboard rotated right", "ok");
     });
 
     resetBtn.addEventListener("click", () => {
       phase = "calibration";
       drawing = false;
+      sculptActive = false;
       drawnPoints = [];
+      sculptAnchor = null;
       previewAnchor = null;
       pinnedAnchor = null;
-      smoothedFinger = null;
-      hoveredKey = null;
-      hoverSince = 0;
+      rotationOffsetDeg = 0;
+      typedText = "";
+      lastTrigger = "—";
+      smoothedPoints.clear();
+      fingerStates.clear();
       shapeText.textContent = "—";
       hoveredText.textContent = "—";
+      fingertipsText.textContent = "0";
       triggerText.textContent = "—";
       pinchText.textContent = "—";
+      pressText.textContent = "—";
+      updateOutput();
+      updateRotationText();
       refreshPhaseBadge();
-      setStatus("Calibration reset", "ok");
-    });
-
-    selectionModeEl.addEventListener("change", () => {
-      selectionMode = selectionModeEl.value;
-    });
-
-    mirrorModeEl.addEventListener("change", () => {
-      mirror = mirrorModeEl.value === "on";
-      syncMirror();
-    });
-
-    scaleModeEl.addEventListener("change", () => {
-      keyboardScale = Number(scaleModeEl.value);
-    });
-
-    dwellModeEl.addEventListener("change", () => {
-      dwellMs = Number(dwellModeEl.value);
-    });
-
-    neonModeEl.addEventListener("change", () => {
-      neonStrength = Number(neonModeEl.value);
-    });
-
-    accuracyModeEl.addEventListener("change", () => {
-      const mode = accuracyModeEl.value;
-      if (mode === "fast") {
-        smoothingAlpha = 0.55;
-        cooldownMs = 180;
-      } else if (mode === "stable") {
-        smoothingAlpha = 0.18;
-        cooldownMs = 320;
-      } else {
-        smoothingAlpha = 0.32;
-        cooldownMs = 260;
-      }
+      setStatus("Halo reset", "ok");
     });
 
     window.addEventListener("resize", resizeCanvas);
+
+    async function ensureAudio() {
+      if (!soundEnabled) return;
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === "suspended") {
+        try { await audioCtx.resume(); } catch (_) {}
+      }
+    }
+
+    function playFeedback() {
+      if (soundEnabled) {
+        ensureAudio();
+        if (audioCtx) {
+          const now = audioCtx.currentTime;
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(760, now);
+          osc.frequency.exponentialRampToValueAtTime(520, now + 0.045);
+          gain.gain.setValueAtTime(0.0001, now);
+          gain.gain.exponentialRampToValueAtTime(0.02, now + 0.008);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+          osc.connect(gain).connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.065);
+        }
+      }
+      if (vibrationEnabled && navigator.vibrate) {
+        navigator.vibrate(8);
+      }
+    }
 
     async function createHandLandmarker() {
       if (handLandmarker) return handLandmarker;
@@ -588,8 +661,7 @@
       );
       handLandmarker = await HandLandmarker.createFromOptions(vision, {
         baseOptions: {
-          modelAssetPath:
-            "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+          modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
           delegate: "GPU"
         },
         runningMode: "VIDEO",
@@ -604,12 +676,11 @@
     async function startCamera(deviceId = "") {
       try {
         await createHandLandmarker();
+        await ensureAudio();
         stopCamera();
-
         const constraints = deviceId
           ? { video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }
           : { video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "environment" }, audio: false };
-
         stream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = stream;
         await video.play();
@@ -617,12 +688,12 @@
         resizeCanvas();
         await refreshCameraList();
         setStatus("Camera running", "ok");
-        trackingText.textContent = "Show your hand to calibrate";
+        trackingText.textContent = "Show one or two hands";
         trackingText.className = "warn";
         requestAnimationFrame(loop);
       } catch (error) {
         console.error(error);
-        setStatus("Camera failed. Use HTTPS and grant camera permission.", "bad");
+        setStatus("Camera failed. Use HTTPS and grant permission.", "bad");
         trackingText.textContent = "Camera unavailable";
         trackingText.className = "bad";
       }
@@ -630,9 +701,7 @@
 
     function stopCamera() {
       running = false;
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
+      if (stream) stream.getTracks().forEach((track) => track.stop());
       stream = null;
       video.srcObject = null;
     }
@@ -662,101 +731,231 @@
       if (!running) return;
       resizeCanvas();
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
       if (video.currentTime !== lastVideoTime && handLandmarker) {
         lastVideoTime = video.currentTime;
         latestResult = handLandmarker.detectForVideo(video, now);
       }
-
       renderFrame(now, latestResult);
       requestAnimationFrame(loop);
     }
 
     function renderFrame(now, result) {
-      const activeAnchor = pinnedAnchor || previewAnchor;
-      if (activeAnchor) {
-        drawNeonBoard(getScaledAnchor(activeAnchor), !pinnedAnchor);
-        if (pinnedAnchor) drawKeyboard(getScaledAnchor(pinnedAnchor), hoveredKey, now);
-      }
-
-      if (!result || !result.landmarks || result.landmarks.length === 0) {
+      const hands = result?.landmarks || [];
+      if (!hands.length) {
         trackingText.textContent = "No hands detected";
         trackingText.className = "warn";
+        fingertipsText.textContent = "0";
+        hoveredText.textContent = "—";
+        drawGhostBoards();
         drawOverlayHints();
         return;
       }
 
-      trackingText.textContent = `${result.landmarks.length} hand${result.landmarks.length > 1 ? "s" : ""} tracked`;
+      trackingText.textContent = `${hands.length} hand${hands.length > 1 ? "s" : ""} tracked`;
       trackingText.className = "ok";
 
-      const hand = result.landmarks[0];
-      const rawIndex = landmarkToPoint(hand[8]);
-      const indexPoint = smoothPoint(rawIndex);
-      const thumbPoint = landmarkToPoint(hand[4]);
-      const pinchDistance = distance(indexPoint, thumbPoint) / Math.max(canvas.width, canvas.height);
-      pinchText.textContent = pinchDistance.toFixed(3);
+      const cursors = [];
+      let minPinch = Infinity;
+      let maxPressDelta = -Infinity;
+      const hoveredLabels = new Set();
 
-      drawHand(hand, indexPoint, thumbPoint);
-      drawCursor(indexPoint, pinchDistance);
+      hands.forEach((hand, handIndex) => {
+        const thumbPoint = smoothPoint(`hand-${handIndex}-4`, landmarkToPoint(hand[4]));
+        drawHand(hand, thumbPoint);
+        TIP_INDICES.forEach((tipIndex) => {
+          const id = `hand-${handIndex}-${tipIndex}`;
+          const point = smoothPoint(id, landmarkToPoint(hand[tipIndex]));
+          const landmark = hand[tipIndex];
+          const pinchDistance = tipIndex === 4 ? null : distance(point, thumbPoint) / Math.max(canvas.width, canvas.height);
+          if (pinchDistance !== null && pinchDistance < minPinch) minPinch = pinchDistance;
+          const cursor = {
+            id,
+            handIndex,
+            tipIndex,
+            fingerName: FINGER_NAMES[tipIndex],
+            point,
+            z: landmark.z,
+            pinchDistance,
+            isThumb: tipIndex === 4
+          };
+          cursors.push(cursor);
+        });
+      });
 
-      if (drawing) {
-        maybeAddDrawPoint(indexPoint);
-        drawPath();
+      fingertipsText.textContent = String(cursors.length);
+      pinchText.textContent = Number.isFinite(minPinch) ? minPinch.toFixed(3) : "—";
+
+      updateSculptPlacement(hands);
+      drawGhostBoards();
+
+      const activeAnchor = getActiveDisplayAnchor();
+      if (activeAnchor) {
+        cursors.forEach((cursor) => {
+          const hit = keyAtPoint(cursor.point, activeAnchor);
+          if (hit) {
+            cursor.hoveredKey = hit.key;
+            hoveredLabels.add(hit.key.label);
+          }
+        });
+
+        if (pinnedAnchor) {
+          drawKeyboard(activeAnchor, hoveredLabels, cursors, now);
+          maxPressDelta = handleTyping(cursors, now, activeAnchor);
+        }
       }
 
-      if (pinnedAnchor) {
-        handleTyping(indexPoint, pinchDistance, now, getScaledAnchor(pinnedAnchor));
-      } else {
-        hoveredKey = null;
-        hoveredText.textContent = "—";
+      hoveredText.textContent = hoveredLabels.size ? Array.from(hoveredLabels).map(formatKeyLabel).join(", ") : "—";
+      pressText.textContent = Number.isFinite(maxPressDelta) && maxPressDelta > -Infinity ? maxPressDelta.toFixed(3) : "—";
+
+      cursors.forEach(drawCursor);
+
+      if (drawing && placementMode === "rectangle") {
+        const indexCursor = cursors.find((cursor) => cursor.tipIndex === 8);
+        if (indexCursor) {
+          maybeAddDrawPoint(indexCursor.point);
+          drawPath();
+        }
       }
 
-      if (!activeAnchor) drawOverlayHints();
+      if (!getAnyAnchor()) drawOverlayHints();
     }
 
-    function handleTyping(indexPoint, pinchDistance, now, anchor) {
-      const hit = keyAtPoint(indexPoint, anchor);
-      hoveredKey = hit?.key ?? null;
-      hoveredText.textContent = hoveredKey ? formatKeyLabel(hoveredKey.label) : "—";
+    function updateSculptPlacement(hands) {
+      if (!sculptActive || placementMode !== "sculpt" || !hands.length) return;
+      const hand = hands[0];
+      const wrist = landmarkToPoint(hand[0]);
+      const indexTip = landmarkToPoint(hand[8]);
+      const thumbTip = landmarkToPoint(hand[4]);
+      const middleMcp = landmarkToPoint(hand[9]);
+      const pinkyMcp = landmarkToPoint(hand[17]);
+      const indexMcp = landmarkToPoint(hand[5]);
+      const palmCenter = averagePoint([wrist, middleMcp, pinkyMcp, indexMcp]);
+      const pinchDistance = distance(indexTip, thumbTip) / Math.max(canvas.width, canvas.height);
+      const isGrab = pinchDistance < 0.11;
 
-      if (hoveredKey) {
-        if (lastCommittedKey !== hoveredKey.label) {
-          hoverSince = hoverSince || now;
-        }
-      } else {
-        hoverSince = 0;
+      if (!isGrab && sculptAnchor) {
+        shapeText.textContent = "Sculpt preview ready";
+        return;
       }
 
-      const canPinch = selectionMode === "pinch" || selectionMode === "both";
-      const canDwell = selectionMode === "dwell" || selectionMode === "both";
+      const xAxisRaw = normalize({ x: indexMcp.x - pinkyMcp.x, y: indexMcp.y - pinkyMcp.y });
+      const xAxis = xAxisRaw.x < 0 ? { x: -xAxisRaw.x, y: -xAxisRaw.y } : xAxisRaw;
+      let yAxis = anchorMode === "surface"
+        ? normalize({ x: middleMcp.x - wrist.x, y: middleMcp.y - wrist.y })
+        : perpendicularDown(xAxis);
+      if (!Number.isFinite(yAxis.x) || !Number.isFinite(yAxis.y) || Math.abs(dot(xAxis, yAxis)) > 0.8) {
+        yAxis = perpendicularDown(xAxis);
+      }
+      if (anchorMode === "surface" && yAxis.y < 0) yAxis = { x: -yAxis.x, y: -yAxis.y };
+      if (anchorMode === "air") yAxis = perpendicularDown(xAxis);
+
+      const handSpan = distance(indexMcp, pinkyMcp);
+      sculptScale = clamp(mapRange(pinchDistance, 0.025, 0.15, 0.75, 1.8), 0.6, 2.1);
+      const width = handSpan * 3.0 * sculptScale;
+      const height = width * 0.45;
+      const center = anchorMode === "surface"
+        ? { x: palmCenter.x, y: palmCenter.y + height * 0.08 }
+        : { x: palmCenter.x, y: palmCenter.y - height * 0.15 };
+
+      sculptAnchor = {
+        center,
+        xAxis,
+        yAxis,
+        baseWidth: width,
+        baseHeight: height,
+        anchorMode
+      };
+      shapeText.textContent = `Sculpt ${Math.round(width)}×${Math.round(height)}`;
+    }
+
+    function handleTyping(cursors, now, anchor) {
       let committed = false;
+      let maxPressDelta = -Infinity;
 
-      if (hoveredKey && canPinch && pinchDistance < PINCH_THRESHOLD) {
-        committed = tryCommitKey(hoveredKey.label, now, "pinch");
-      }
+      cursors.forEach((cursor) => {
+        const state = getFingerState(cursor.id);
+        const keyLabel = cursor.hoveredKey?.label || null;
+        updateDepthState(state, cursor.z);
 
-      if (!committed && hoveredKey && canDwell) {
-        const startedAt = hoverSince || now;
-        hoverSince = startedAt;
-        if (now - startedAt >= dwellMs) {
-          committed = tryCommitKey(hoveredKey.label, now, "dwell");
+        if (!keyLabel) {
+          state.hoverSince = 0;
+          state.lastHoverKey = null;
+          state.pressArmed = true;
+          return;
         }
-      }
 
-      if (!committed) {
-        triggerText.textContent = lastTrigger;
-      }
+        if (state.lastHoverKey !== keyLabel) {
+          state.hoverSince = now;
+          state.lastHoverKey = keyLabel;
+          state.depthBaseline = cursor.z;
+          state.pressArmed = true;
+        } else {
+          state.depthBaseline = Math.max(state.depthBaseline, cursor.z);
+        }
+
+        const pressDelta = Math.abs(cursor.z - state.depthBaseline);
+        if (pressDelta > maxPressDelta) maxPressDelta = pressDelta;
+
+        const canPress = !cursor.isThumb && (selectionMode === "press" || selectionMode === "hybrid");
+        const canPinch = !cursor.isThumb && (selectionMode === "pinch" || selectionMode === "hybrid");
+        const canDwell = selectionMode === "dwell" || selectionMode === "hybrid";
+
+        if (!committed && canPress && detectPressGesture(state, cursor.z)) {
+          committed = tryCommitKey(keyLabel, now, cursor.id, `press ${cursor.fingerName}`);
+          if (committed) state.pressArmed = false;
+        }
+
+        if (!committed && canPinch && cursor.pinchDistance !== null && cursor.pinchDistance < PINCH_THRESHOLD) {
+          committed = tryCommitKey(keyLabel, now, cursor.id, `pinch ${cursor.fingerName}`);
+        }
+
+        if (!committed && canDwell && state.hoverSince && now - state.hoverSince >= dwellMs) {
+          committed = tryCommitKey(keyLabel, now, cursor.id, `dwell ${cursor.fingerName}`);
+        }
+      });
+
+      if (!committed) triggerText.textContent = lastTrigger;
+      return maxPressDelta;
     }
 
-    function tryCommitKey(label, now, source) {
-      if (now - lastCommitTime < cooldownMs && lastCommittedKey === label) return false;
+    function updateDepthState(state, z) {
+      if (state.lastZ === null) {
+        state.lastZ = z;
+        state.depthVelocity = 0;
+        state.depthBaseline = z;
+        return;
+      }
+      state.depthVelocity = z - state.lastZ;
+      state.lastZ = z;
+    }
+
+    function detectPressGesture(state, z) {
+      if (!state.pressArmed) {
+        if (Math.abs(z - state.depthBaseline) < PRESS_RECOVERY_THRESHOLD) {
+          state.pressArmed = true;
+        }
+        return false;
+      }
+      const depthDelta = Math.abs(z - state.depthBaseline);
+      const velocity = Math.abs(state.depthVelocity);
+      return depthDelta > PRESS_DEPTH_THRESHOLD && velocity > PRESS_VELOCITY_THRESHOLD;
+    }
+
+    function tryCommitKey(label, now, cursorId, source) {
+      const state = getFingerState(cursorId);
+      if (now - state.lastCommitTime < cooldownMs) return false;
+      if (now - lastGlobalCommitTime < GLOBAL_REPEAT_GUARD_MS && label === lastGlobalKey) return false;
       applyKey(label);
-      lastCommittedKey = label;
-      lastCommitTime = now;
-      hoverSince = now;
+      state.lastCommitTime = now;
+      state.hoverSince = now;
+      state.lastHoverKey = label;
+      state.depthBaseline = state.lastZ ?? state.depthBaseline;
+      lastGlobalCommitTime = now;
+      lastGlobalKey = label;
       lastTrigger = `${source} → ${formatKeyLabel(label)}`;
       triggerText.textContent = lastTrigger;
       setStatus(`Typed ${formatKeyLabel(label)}`, "ok");
+      playFeedback();
       return true;
     }
 
@@ -770,9 +969,7 @@
 
     function maybeAddDrawPoint(point) {
       const last = drawnPoints[drawnPoints.length - 1];
-      if (!last || distance(last, point) >= DRAW_POINT_STEP) {
-        drawnPoints.push({ x: point.x, y: point.y });
-      }
+      if (!last || distance(last, point) >= DRAW_POINT_STEP) drawnPoints.push({ x: point.x, y: point.y });
     }
 
     function drawPath() {
@@ -786,235 +983,102 @@
       ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.moveTo(drawnPoints[0].x, drawnPoints[0].y);
-      for (let i = 1; i < drawnPoints.length; i += 1) {
-        ctx.lineTo(drawnPoints[i].x, drawnPoints[i].y);
-      }
+      for (let i = 1; i < drawnPoints.length; i += 1) ctx.lineTo(drawnPoints[i].x, drawnPoints[i].y);
       ctx.stroke();
       ctx.restore();
     }
 
-    function anchorFromPath(points) {
-      if (points.length < 12) return null;
-      const center = averagePoint(points);
-      let sxx = 0;
-      let sxy = 0;
-      let syy = 0;
-      for (const p of points) {
-        const dx = p.x - center.x;
-        const dy = p.y - center.y;
-        sxx += dx * dx;
-        sxy += dx * dy;
-        syy += dy * dy;
+    function drawGhostBoards() {
+      const anchor = getActiveDisplayAnchor();
+      if (anchor) {
+        drawNeonBoard(anchor, !pinnedAnchor);
       }
-
-      const trace = sxx + syy;
-      const diff = sxx - syy;
-      const root = Math.sqrt(diff * diff + 4 * sxy * sxy);
-      const lambda = (trace + root) / 2;
-      let xAxis = normalize({ x: sxy, y: lambda - sxx });
-      if (!Number.isFinite(xAxis.x) || !Number.isFinite(xAxis.y) || (Math.abs(xAxis.x) < 0.001 && Math.abs(xAxis.y) < 0.001)) {
-        xAxis = normalize({ x: 1, y: 0 });
-      }
-      let yAxis = normalize({ x: -xAxis.y, y: xAxis.x });
-
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      for (const p of points) {
-        const rel = { x: p.x - center.x, y: p.y - center.y };
-        const u = dot(rel, xAxis);
-        const v = dot(rel, yAxis);
-        minX = Math.min(minX, u);
-        maxX = Math.max(maxX, u);
-        minY = Math.min(minY, v);
-        maxY = Math.max(maxY, v);
-      }
-
-      let width = maxX - minX;
-      let height = maxY - minY;
-      if (!Number.isFinite(width) || !Number.isFinite(height) || width < 80 || height < 40) return null;
-
-      if (height > width) {
-        const oldX = xAxis;
-        xAxis = yAxis;
-        yAxis = { x: -oldX.x, y: -oldX.y };
-        const oldWidth = width;
-        width = height;
-        height = oldWidth;
-        const oldMinX = minX;
-        const oldMaxX = maxX;
-        minX = minY;
-        maxX = maxY;
-        minY = -oldMaxX;
-        maxY = -oldMinX;
-      }
-
-      width *= 1.08;
-      height *= 1.12;
-      const localCenter = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
-
-      return {
-        center: {
-          x: center.x + localCenter.x * xAxis.x + localCenter.y * yAxis.x,
-          y: center.y + localCenter.x * xAxis.y + localCenter.y * yAxis.y
-        },
-        xAxis,
-        yAxis,
-        baseWidth: width,
-        baseHeight: height
-      };
-    }
-
-    function getScaledAnchor(anchor) {
-      return {
-        center: { ...anchor.center },
-        xAxis: { ...anchor.xAxis },
-        yAxis: { ...anchor.yAxis },
-        width: anchor.baseWidth * keyboardScale,
-        height: anchor.baseHeight * keyboardScale
-      };
-    }
-
-    function keyAtPoint(point, anchor) {
-      const rel = { x: point.x - anchor.center.x, y: point.y - anchor.center.y };
-      const u = dot(rel, anchor.xAxis) / anchor.width + 0.5;
-      const v = dot(rel, anchor.yAxis) / anchor.height + 0.5;
-      for (const key of KEY_LAYOUT) {
-        if (u >= key.x && u <= key.x + key.w && v >= key.y && v <= key.y + key.h) {
-          return { key, u, v };
-        }
-      }
-      return null;
-    }
-
-    function buildLayout(rows) {
-      const result = [];
-      const vGap = 0.03;
-      const hGap = 0.018;
-      const rowHeight = (1 - vGap * (rows.length - 1)) / rows.length;
-      let y = 0;
-      rows.forEach((row) => {
-        const weights = row.map((label) => {
-          if (label === "SPACE") return 4.2;
-          if (label === "BACKSPACE") return 2.1;
-          if (label === "ENTER") return 2.0;
-          return 1;
-        });
-        const totalWeights = weights.reduce((sum, n) => sum + n, 0);
-        const unit = (1 - hGap * (row.length - 1)) / totalWeights;
-        let x = 0;
-        row.forEach((label, index) => {
-          const w = weights[index] * unit;
-          result.push({ label, x, y, w, h: rowHeight });
-          x += w + hGap;
-        });
-        y += rowHeight + vGap;
-      });
-      return result;
     }
 
     function drawNeonBoard(anchor, preview = false) {
-      const corners = [
-        project(anchor, 0, 0),
-        project(anchor, 1, 0),
-        project(anchor, 1, 1),
-        project(anchor, 0, 1)
-      ];
-
+      const corners = [project(anchor, 0, 0), project(anchor, 1, 0), project(anchor, 1, 1), project(anchor, 0, 1)];
       ctx.save();
       ctx.beginPath();
       ctx.moveTo(corners[0].x, corners[0].y);
       corners.slice(1).forEach((p) => ctx.lineTo(p.x, p.y));
       ctx.closePath();
-      ctx.fillStyle = preview ? "rgba(8, 26, 48, 0.13)" : "rgba(8, 26, 48, 0.18)";
+      ctx.fillStyle = preview ? "rgba(8, 26, 48, 0.12)" : "rgba(8, 26, 48, 0.18)";
       ctx.shadowColor = `rgba(34, 211, 238, ${0.85 * neonStrength})`;
       ctx.shadowBlur = 24 * neonStrength;
       ctx.strokeStyle = `rgba(34, 211, 238, ${0.95 * neonStrength})`;
-      ctx.lineWidth = preview ? 3 : 3.5;
+      ctx.lineWidth = preview ? 3 : 3.6;
       ctx.fill();
       ctx.stroke();
       ctx.restore();
-
       corners.forEach((corner) => {
         ctx.save();
         ctx.beginPath();
         ctx.arc(corner.x, corner.y, 6, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(249, 168, 212, ${0.95 * neonStrength})`;
         ctx.shadowColor = `rgba(249, 168, 212, ${0.9 * neonStrength})`;
-        ctx.shadowBlur = 20 * neonStrength;
+        ctx.shadowBlur = 18 * neonStrength;
         ctx.fill();
         ctx.restore();
       });
     }
 
-    function drawKeyboard(anchor, hovered, now) {
+    function drawKeyboard(anchor, hoveredLabels, cursors, now) {
       const pulse = 0.56 + 0.44 * Math.sin(now / 260);
       KEY_LAYOUT.forEach((key) => {
-        const corners = [
-          project(anchor, key.x, key.y),
-          project(anchor, key.x + key.w, key.y),
-          project(anchor, key.x + key.w, key.y + key.h),
-          project(anchor, key.x, key.y + key.h)
-        ];
-        const isHover = hovered && hovered.label === key.label;
-
+        const corners = [project(anchor, key.x, key.y), project(anchor, key.x + key.w, key.y), project(anchor, key.x + key.w, key.y + key.h), project(anchor, key.x, key.y + key.h)];
+        const isHover = hoveredLabels.has(key.label);
         ctx.save();
         ctx.beginPath();
         ctx.moveTo(corners[0].x, corners[0].y);
         corners.slice(1).forEach((p) => ctx.lineTo(p.x, p.y));
         ctx.closePath();
-        ctx.fillStyle = isHover
-          ? `rgba(96, 165, 250, ${0.18 + pulse * 0.16})`
-          : "rgba(255, 255, 255, 0.05)";
-        ctx.strokeStyle = isHover
-          ? `rgba(96, 165, 250, ${0.95 * neonStrength})`
-          : `rgba(34, 211, 238, ${0.24 * neonStrength})`;
-        ctx.shadowColor = isHover
-          ? `rgba(96, 165, 250, ${0.9 * neonStrength})`
-          : `rgba(34, 211, 238, ${0.42 * neonStrength})`;
+        ctx.fillStyle = isHover ? `rgba(96, 165, 250, ${0.18 + pulse * 0.16})` : "rgba(255, 255, 255, 0.05)";
+        ctx.strokeStyle = isHover ? `rgba(96, 165, 250, ${0.96 * neonStrength})` : `rgba(34, 211, 238, ${0.24 * neonStrength})`;
+        ctx.shadowColor = isHover ? `rgba(96, 165, 250, ${0.9 * neonStrength})` : `rgba(34, 211, 238, ${0.38 * neonStrength})`;
         ctx.shadowBlur = isHover ? 18 * neonStrength : 10 * neonStrength;
-        ctx.lineWidth = isHover ? 2.4 : 1.2;
+        ctx.lineWidth = isHover ? 2.5 : 1.2;
         ctx.fill();
         ctx.stroke();
         ctx.restore();
-
         const center = project(anchor, key.x + key.w / 2, key.y + key.h / 2);
         const fontSize = Math.max(11, Math.min(anchor.height * key.h * 0.42, 26));
         ctx.save();
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.font = `600 ${fontSize}px Inter, system-ui, sans-serif`;
-        ctx.fillStyle = isHover ? "rgba(255,255,255,1)" : "rgba(239, 246, 255, 0.92)";
+        ctx.fillStyle = isHover ? "rgba(255,255,255,1)" : "rgba(239,246,255,0.92)";
         ctx.fillText(formatKeyLabel(key.label), center.x, center.y + 1);
         ctx.restore();
       });
 
-      if (hovered) {
-        const progress = Math.max(0, Math.min(1, (performance.now() - hoverSince) / dwellMs));
-        const point = project(anchor, hovered.x + hovered.w / 2, hovered.y - 0.055);
+      cursors.forEach((cursor) => {
+        if (!cursor.hoveredKey) return;
+        const state = getFingerState(cursor.id);
+        if (!state.hoverSince) return;
+        const progress = Math.max(0, Math.min(1, (performance.now() - state.hoverSince) / dwellMs));
+        const key = cursor.hoveredKey;
+        const point = project(anchor, key.x + key.w / 2, key.y - 0.055);
         ctx.save();
         ctx.beginPath();
-        ctx.arc(point.x, point.y, 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
-        ctx.strokeStyle = `rgba(134, 239, 172, ${0.96 * neonStrength})`;
-        ctx.lineWidth = 3;
-        ctx.shadowColor = `rgba(134, 239, 172, ${0.95 * neonStrength})`;
-        ctx.shadowBlur = 18 * neonStrength;
+        ctx.arc(point.x, point.y, 9, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+        ctx.strokeStyle = `rgba(134,239,172,${0.9 * neonStrength})`;
+        ctx.lineWidth = 2.4;
+        ctx.shadowColor = `rgba(134,239,172,${0.95 * neonStrength})`;
+        ctx.shadowBlur = 12 * neonStrength;
         ctx.stroke();
         ctx.restore();
-      }
+      });
     }
 
-    function drawHand(hand, indexPoint, thumbPoint) {
+    function drawHand(hand, thumbPoint) {
       const segments = [
-        [0,1],[1,2],[2,3],[3,4],
-        [0,5],[5,6],[6,7],[7,8],
-        [5,9],[9,10],[10,11],[11,12],
-        [9,13],[13,14],[14,15],[15,16],
-        [13,17],[17,18],[18,19],[19,20],[0,17]
+        [0,1],[1,2],[2,3],[3,4], [0,5],[5,6],[6,7],[7,8], [5,9],[9,10],[10,11],[11,12],
+        [9,13],[13,14],[14,15],[15,16], [13,17],[17,18],[18,19],[19,20], [0,17]
       ];
-
       ctx.save();
       ctx.lineWidth = 2;
-      ctx.strokeStyle = "rgba(255,255,255,0.26)";
-      segments.forEach(([a, b]) => {
+      ctx.strokeStyle = "rgba(255,255,255,0.22)";
+      segments.forEach(([a,b]) => {
         const p1 = landmarkToPoint(hand[a]);
         const p2 = landmarkToPoint(hand[b]);
         ctx.beginPath();
@@ -1022,42 +1086,34 @@
         ctx.lineTo(p2.x, p2.y);
         ctx.stroke();
       });
-
       hand.forEach((landmark, index) => {
         const p = landmarkToPoint(landmark);
-        const radius = index === 8 ? 7 : index === 4 ? 6 : 4;
+        const r = index === 4 ? 6 : TIP_INDICES.includes(index) ? 5 : 3.5;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = index === 8
-          ? "rgba(34, 211, 238, 0.96)"
-          : index === 4
-            ? "rgba(134, 239, 172, 0.95)"
-            : "rgba(255,255,255,0.78)";
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = index === 4 ? "rgba(134,239,172,0.95)" : TIP_INDICES.includes(index) ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.72)";
         ctx.fill();
       });
-
-      ctx.setLineDash([8, 8]);
-      ctx.strokeStyle = "rgba(134, 239, 172, 0.55)";
-      ctx.beginPath();
-      ctx.moveTo(indexPoint.x, indexPoint.y);
-      ctx.lineTo(thumbPoint.x, thumbPoint.y);
-      ctx.stroke();
+      if (thumbPoint) {
+        ctx.beginPath();
+        ctx.arc(thumbPoint.x, thumbPoint.y, 7, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(134,239,172,0.98)";
+        ctx.fill();
+      }
       ctx.restore();
     }
 
-    function drawCursor(point, pinchDistance) {
+    function drawCursor(cursor) {
       ctx.save();
+      const stroke = cursor.isThumb ? "rgba(134,239,172,0.95)" : "rgba(34,211,238,0.92)";
+      const fill = cursor.isThumb ? "rgba(134,239,172,0.12)" : "rgba(34,211,238,0.12)";
       ctx.beginPath();
-      ctx.arc(point.x, point.y, 18, 0, Math.PI * 2);
-      ctx.fillStyle = pinchDistance < PINCH_THRESHOLD
-        ? "rgba(134, 239, 172, 0.14)"
-        : "rgba(34, 211, 238, 0.12)";
-      ctx.strokeStyle = pinchDistance < PINCH_THRESHOLD
-        ? "rgba(134, 239, 172, 0.95)"
-        : "rgba(34, 211, 238, 0.9)";
-      ctx.lineWidth = 2.3;
-      ctx.shadowColor = ctx.strokeStyle;
-      ctx.shadowBlur = 16 * neonStrength;
+      ctx.arc(cursor.point.x, cursor.point.y, cursor.isThumb ? 10 : 13, 0, Math.PI * 2);
+      ctx.fillStyle = fill;
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 2.2;
+      ctx.shadowColor = stroke;
+      ctx.shadowBlur = 12 * neonStrength;
       ctx.fill();
       ctx.stroke();
       ctx.restore();
@@ -1068,12 +1124,124 @@
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.font = "600 18px Inter, system-ui, sans-serif";
-      ctx.fillStyle = "rgba(239, 246, 255, 0.74)";
-      let text = "Start the camera and draw a rectangle in the air";
-      if (phase === "preview") text = "Finish looks good? Pin the keyboard to begin typing";
-      if (phase === "typing") text = "Move your fingertip over the neon keys to type";
+      ctx.fillStyle = "rgba(239,246,255,0.74)";
+      let text = placementMode === "sculpt" ? "Start camera, then pinch with one hand to place Halo" : "Start camera and trace a rectangle in the air";
+      if (phase === "preview") text = "Pin Halo when it looks right";
+      if (phase === "typing") text = "Use a short press gesture to type";
       ctx.fillText(text, canvas.width / 2, canvas.height / 2);
       ctx.restore();
+    }
+
+    function getActiveDisplayAnchor() {
+      const anchor = getAnyAnchor();
+      if (!anchor) return null;
+      const radians = rotationOffsetDeg * Math.PI / 180;
+      let xAxis = rotateVector(anchor.xAxis, radians);
+      if (xAxis.x < 0) xAxis = { x: -xAxis.x, y: -xAxis.y };
+      let yAxis = anchorMode === "surface" || anchor.anchorMode === "surface"
+        ? rotateVector(anchor.yAxis, radians)
+        : perpendicularDown(xAxis);
+      if (anchorMode === "air") yAxis = perpendicularDown(xAxis);
+      return {
+        center: { ...anchor.center },
+        xAxis: normalize(xAxis),
+        yAxis: normalize(yAxis),
+        width: anchor.baseWidth * keyboardScale,
+        height: anchor.baseHeight * keyboardScale,
+        anchorMode: anchor.anchorMode || anchorMode
+      };
+    }
+
+    function getAnyAnchor() {
+      return pinnedAnchor || previewAnchor || sculptAnchor;
+    }
+
+    function keyAtPoint(point, anchor) {
+      const rel = { x: point.x - anchor.center.x, y: point.y - anchor.center.y };
+      const u = dot(rel, anchor.xAxis) / anchor.width + 0.5;
+      const v = dot(rel, anchor.yAxis) / anchor.height + 0.5;
+      for (const key of KEY_LAYOUT) {
+        if (u >= key.x && u <= key.x + key.w && v >= key.y && v <= key.y + key.h) return { key, u, v };
+      }
+      return null;
+    }
+
+    function anchorFromPath(points) {
+      if (points.length < 12) return null;
+      const center = averagePoint(points);
+      let sxx = 0, sxy = 0, syy = 0;
+      for (const p of points) {
+        const dx = p.x - center.x;
+        const dy = p.y - center.y;
+        sxx += dx * dx;
+        sxy += dx * dy;
+        syy += dy * dy;
+      }
+      const trace = sxx + syy;
+      const diff = sxx - syy;
+      const root = Math.sqrt(diff * diff + 4 * sxy * sxy);
+      const lambda = (trace + root) / 2;
+      let xAxis = normalize({ x: sxy, y: lambda - sxx });
+      if (!Number.isFinite(xAxis.x) || !Number.isFinite(xAxis.y) || (Math.abs(xAxis.x) < 0.001 && Math.abs(xAxis.y) < 0.001)) {
+        xAxis = { x: 1, y: 0 };
+      }
+      if (xAxis.x < 0) xAxis = { x: -xAxis.x, y: -xAxis.y };
+      let yAxis = anchorMode === "surface" ? perpendicularDown(xAxis) : perpendicularDown(xAxis);
+      let bounds = projectBounds(points, center, xAxis, yAxis);
+      let width = bounds.maxX - bounds.minX;
+      let height = bounds.maxY - bounds.minY;
+      if (!Number.isFinite(width) || !Number.isFinite(height) || width < 80 || height < 40) return null;
+      if (height > width) {
+        const newXAxis = yAxis.y >= 0 ? yAxis : { x: -yAxis.x, y: -yAxis.y };
+        xAxis = newXAxis.x < 0 ? { x: -newXAxis.x, y: -newXAxis.y } : newXAxis;
+        yAxis = perpendicularDown(xAxis);
+        bounds = projectBounds(points, center, xAxis, yAxis);
+        width = bounds.maxX - bounds.minX;
+        height = bounds.maxY - bounds.minY;
+      }
+      width *= 1.08;
+      height *= 1.12;
+      const localCenter = { x: (bounds.minX + bounds.maxX) / 2, y: (bounds.minY + bounds.maxY) / 2 };
+      return {
+        center: { x: center.x + localCenter.x * xAxis.x + localCenter.y * yAxis.x, y: center.y + localCenter.x * xAxis.y + localCenter.y * yAxis.y },
+        xAxis,
+        yAxis,
+        baseWidth: width,
+        baseHeight: height,
+        anchorMode
+      };
+    }
+
+    function projectBounds(points, center, xAxis, yAxis) {
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const p of points) {
+        const rel = { x: p.x - center.x, y: p.y - center.y };
+        const u = dot(rel, xAxis);
+        const v = dot(rel, yAxis);
+        minX = Math.min(minX, u); maxX = Math.max(maxX, u); minY = Math.min(minY, v); maxY = Math.max(maxY, v);
+      }
+      return { minX, maxX, minY, maxY };
+    }
+
+    function buildLayout(rows) {
+      const result = [];
+      const vGap = 0.03;
+      const hGap = 0.018;
+      const rowHeight = (1 - vGap * (rows.length - 1)) / rows.length;
+      let y = 0;
+      rows.forEach((row) => {
+        const weights = row.map((label) => label === "SPACE" ? 4.2 : label === "BACKSPACE" ? 2.1 : label === "ENTER" ? 2.0 : 1);
+        const total = weights.reduce((a, b) => a + b, 0);
+        const unit = (1 - hGap * (row.length - 1)) / total;
+        let x = 0;
+        row.forEach((label, i) => {
+          const w = weights[i] * unit;
+          result.push({ label, x, y, w, h: rowHeight });
+          x += w + hGap;
+        });
+        y += rowHeight + vGap;
+      });
+      return result;
     }
 
     function project(anchor, u, v) {
@@ -1090,16 +1258,23 @@
       return { x, y: landmark.y * rect.height, z: landmark.z };
     }
 
-    function smoothPoint(point) {
-      if (!smoothedFinger) {
-        smoothedFinger = { ...point };
-        return smoothedFinger;
+    function smoothPoint(id, point) {
+      const existing = smoothedPoints.get(id);
+      if (!existing) {
+        const clone = { ...point };
+        smoothedPoints.set(id, clone);
+        return clone;
       }
-      smoothedFinger = {
-        x: smoothedFinger.x + (point.x - smoothedFinger.x) * smoothingAlpha,
-        y: smoothedFinger.y + (point.y - smoothedFinger.y) * smoothingAlpha
-      };
-      return smoothedFinger;
+      existing.x += (point.x - existing.x) * smoothingAlpha;
+      existing.y += (point.y - existing.y) * smoothingAlpha;
+      return existing;
+    }
+
+    function getFingerState(id) {
+      if (!fingerStates.has(id)) {
+        fingerStates.set(id, { hoverSince: 0, lastCommitTime: 0, lastHoverKey: null, lastZ: null, depthBaseline: 0, depthVelocity: 0, pressArmed: true });
+      }
+      return fingerStates.get(id);
     }
 
     function averagePoint(points) {
@@ -1107,33 +1282,44 @@
       return { x: sum.x / points.length, y: sum.y / points.length };
     }
 
-    function normalize(vector) {
-      const len = Math.hypot(vector.x, vector.y);
+    function normalize(v) {
+      const len = Math.hypot(v.x, v.y);
       if (!len) return { x: 1, y: 0 };
-      return { x: vector.x / len, y: vector.y / len };
+      return { x: v.x / len, y: v.y / len };
     }
 
-    function dot(a, b) {
-      return a.x * b.x + a.y * b.y;
+    function perpendicularDown(xAxis) {
+      const cw = { x: -xAxis.y, y: xAxis.x };
+      const ccw = { x: xAxis.y, y: -xAxis.x };
+      return normalize(cw.y >= ccw.y ? cw : ccw);
     }
 
-    function distance(a, b) {
-      return Math.hypot(a.x - b.x, a.y - b.y);
+    function rotateVector(v, radians) {
+      const cos = Math.cos(radians);
+      const sin = Math.sin(radians);
+      return { x: v.x * cos - v.y * sin, y: v.x * sin + v.y * cos };
     }
 
-    function formatKeyLabel(label) {
-      return SPECIAL_LABELS[label] || label;
+    function cloneAnchor(anchor) {
+      return JSON.parse(JSON.stringify(anchor));
     }
+
+    function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+    function mapRange(value, inMin, inMax, outMin, outMax) {
+      const t = clamp((value - inMin) / (inMax - inMin), 0, 1);
+      return outMin + (outMax - outMin) * t;
+    }
+    function dot(a, b) { return a.x * b.x + a.y * b.y; }
+    function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+    function formatKeyLabel(label) { return SPECIAL_LABELS[label] || label; }
 
     function updateOutput() {
-      outputEl.textContent = typedText || "Draw, pin, and type on the neon keyboard pad.";
+      outputEl.textContent = typedText || "Place Halo and type with a press gesture.";
     }
-
     function syncMirror() {
       video.classList.toggle("mirrored", mirror);
       canvas.classList.toggle("mirrored", mirror);
     }
-
     function resizeCanvas() {
       const rect = canvas.getBoundingClientRect();
       const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
@@ -1145,18 +1331,18 @@
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
-
     function setStatus(text, tone) {
       statusBadge.textContent = text;
-      statusBadge.style.color = tone === "ok"
-        ? "#86efac"
-        : tone === "bad"
-          ? "#fda4af"
-          : "#fde68a";
+      statusBadge.style.color = tone === "ok" ? "#86efac" : tone === "bad" ? "#fda4af" : "#fde68a";
     }
-
-    function refreshPhaseBadge() {
-      phaseBadge.textContent = `Phase: ${phase}`;
+    function refreshPhaseBadge() { phaseBadge.textContent = `Phase: ${phase}`; }
+    function updateRotationText() {
+      const value = ((rotationOffsetDeg % 360) + 360) % 360;
+      const signed = value > 180 ? value - 360 : value;
+      rotationText.textContent = `${signed}°`;
+    }
+    function updateModeText() {
+      modeText.textContent = `${anchorMode} / ${placementMode}`;
     }
   </script>
 </body>
