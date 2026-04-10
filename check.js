@@ -1,6 +1,3 @@
-
-    import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0";
-
     const KEY_ROWS = [
       ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
       ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
@@ -36,6 +33,9 @@
     const neonModeEl = document.getElementById("neonMode");
     const soundToggleEl = document.getElementById("soundToggle");
     const vibrationToggleEl = document.getElementById("vibrationToggle");
+    const voiceCommandToggleEl = document.getElementById("voiceCommandToggle");
+    const wordRecognitionToggleEl = document.getElementById("wordRecognitionToggle");
+    const voiceBtn = document.getElementById("voiceBtn");
 
     const outputEl = document.getElementById("output");
     const phaseBadge = document.getElementById("phaseBadge");
@@ -49,8 +49,11 @@
     const triggerText = document.getElementById("triggerText");
     const pinchText = document.getElementById("pinchText");
     const pressText = document.getElementById("pressText");
+    const voiceStatusText = document.getElementById("voiceStatusText");
+    const heardText = document.getElementById("heardText");
 
     let handLandmarker = null;
+    let mediapipeModulePromise = null;
     let stream = null;
     let running = false;
     let latestResult = null;
@@ -71,6 +74,13 @@
     let rotationOffsetDeg = 0;
     let soundEnabled = true;
     let vibrationEnabled = true;
+    let voiceCommandsEnabled = false;
+    let wordRecognitionEnabled = false;
+    let voiceRecognition = null;
+    let voiceListening = false;
+    let voiceRestartWanted = false;
+    let speechSupported = false;
+    let lastHeard = "—";
 
     let drawnPoints = [];
     let drawing = false;
@@ -88,6 +98,8 @@
     const smoothedPoints = new Map();
     const fingerStates = new Map();
     let audioCtx = null;
+    let cameraStarting = false;
+    let lastCameraError = "";
 
     const DRAW_POINT_STEP = 6;
     const PINCH_THRESHOLD = 0.055;
@@ -101,13 +113,22 @@
     const GLOBAL_REPEAT_GUARD_MS = 90;
     const ROTATION_STEP_DEG = 6;
 
+    prepareVideoElement();
+    setStatus(getStartupStatusText(), "warn");
     updateOutput();
     refreshPhaseBadge();
     updateRotationText();
     updateModeText();
     syncMirror();
+    setupVoiceRecognition();
+    updateVoiceUi();
+    if (navigator.mediaDevices?.addEventListener) {
+      navigator.mediaDevices.addEventListener("devicechange", () => {
+        refreshCameraList().catch((error) => console.error(error));
+      });
+    }
 
-    startCameraBtn.addEventListener("click", () => startCamera(currentDeviceId));
+    startCameraBtn.addEventListener("click", () => { void startCamera(currentDeviceId); });
     cameraSelect.addEventListener("change", async () => {
       currentDeviceId = cameraSelect.value;
       if (running) await startCamera(currentDeviceId);
@@ -132,6 +153,31 @@
     neonModeEl.addEventListener("change", () => { neonStrength = Number(neonModeEl.value); });
     soundToggleEl.addEventListener("change", () => { soundEnabled = soundToggleEl.checked; ensureAudio(); });
     vibrationToggleEl.addEventListener("change", () => { vibrationEnabled = vibrationToggleEl.checked; });
+    voiceCommandToggleEl.addEventListener("change", () => {
+      voiceCommandsEnabled = voiceCommandToggleEl.checked;
+      if (!voiceCommandsEnabled && !wordRecognitionEnabled) stopVoiceRecognition();
+      updateVoiceUi();
+    });
+    wordRecognitionToggleEl.addEventListener("change", () => {
+      wordRecognitionEnabled = wordRecognitionToggleEl.checked;
+      if (!voiceCommandsEnabled && !wordRecognitionEnabled) stopVoiceRecognition();
+      updateVoiceUi();
+    });
+    voiceBtn.addEventListener("click", async () => {
+      if (!speechSupported) {
+        setStatus("Voice input is not supported in this browser.", "warn");
+        return;
+      }
+      if (!voiceCommandsEnabled && !wordRecognitionEnabled) {
+        setStatus("Turn on voice letters/actions or word recognition first.", "warn");
+        return;
+      }
+      if (voiceListening) stopVoiceRecognition();
+      else await startVoiceRecognition();
+    });
+    void refreshCameraList();
+    void maybeAutoStartCamera();
+
     accuracyModeEl.addEventListener("change", () => {
       const mode = accuracyModeEl.value;
       if (mode === "fast") {
@@ -236,6 +282,9 @@
       triggerText.textContent = "—";
       pinchText.textContent = "—";
       pressText.textContent = "—";
+      heardText.textContent = "—";
+      stopVoiceRecognition();
+      updateStartCameraUi(false, running ? "Restart camera" : "Start camera");
       updateOutput();
       updateRotationText();
       refreshPhaseBadge();
@@ -277,9 +326,205 @@
       }
     }
 
+
+    function setupVoiceRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      speechSupported = Boolean(SpeechRecognition);
+      if (!speechSupported) {
+        voiceStatusText.textContent = "unsupported";
+        voiceBtn.disabled = true;
+        return;
+      }
+      voiceRecognition = new SpeechRecognition();
+      voiceRecognition.continuous = true;
+      voiceRecognition.interimResults = false;
+      voiceRecognition.lang = "en-US";
+
+      voiceRecognition.onstart = () => {
+        voiceListening = true;
+        updateVoiceUi();
+        setStatus("Voice listening", "ok");
+      };
+
+      voiceRecognition.onend = () => {
+        voiceListening = false;
+        updateVoiceUi();
+        if (voiceRestartWanted && (voiceCommandsEnabled || wordRecognitionEnabled)) {
+          setTimeout(() => startVoiceRecognition(true), 200);
+        }
+      };
+
+      voiceRecognition.onerror = (event) => {
+        const error = event?.error || "unknown";
+        if (error !== "no-speech" && error !== "aborted") {
+          setStatus(`Voice error: ${error}`, "warn");
+        }
+      };
+
+      voiceRecognition.onresult = (event) => {
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+          const result = event.results[i];
+          if (!result.isFinal) continue;
+          const transcript = String(result[0]?.transcript || "").trim();
+          if (transcript) handleSpeechTranscript(transcript);
+        }
+      };
+    }
+
+    async function startVoiceRecognition(restarting = false) {
+      if (!speechSupported || !voiceRecognition) return;
+      if (!voiceCommandsEnabled && !wordRecognitionEnabled) return;
+      voiceRestartWanted = true;
+      try {
+        if (!restarting) await ensureAudio();
+        voiceRecognition.start();
+      } catch (error) {
+        const message = String(error?.message || error || "");
+        if (!message.includes("already started")) {
+          setStatus("Could not start voice input", "warn");
+        }
+      }
+    }
+
+    function stopVoiceRecognition() {
+      voiceRestartWanted = false;
+      if (!voiceRecognition) {
+        voiceListening = false;
+        updateVoiceUi();
+        return;
+      }
+      try { voiceRecognition.stop(); } catch (_) {}
+      voiceListening = false;
+      updateVoiceUi();
+    }
+
+    function updateVoiceUi() {
+      const enabled = voiceCommandsEnabled || wordRecognitionEnabled;
+      if (!speechSupported) {
+        voiceStatusText.textContent = "unsupported";
+        voiceBtn.textContent = "Voice unsupported";
+        return;
+      }
+      voiceStatusText.textContent = voiceListening ? "listening" : enabled ? "ready" : "off";
+      voiceBtn.textContent = voiceListening ? "Stop voice" : "Start voice";
+    }
+
+    function handleSpeechTranscript(transcript) {
+      lastHeard = transcript;
+      heardText.textContent = transcript;
+      const normalized = normalizeSpeechTranscript(transcript);
+      if (!normalized) return;
+
+      const words = normalized.split(/\s+/).filter(Boolean);
+      const explicitCommand = words.some((word) => ["type", "press", "tap", "hit", "key"].includes(word));
+      const parse = parseSpeechTokens(words);
+      const canUseCommands = voiceCommandsEnabled && (explicitCommand || (parse.leftovers.length === 0 && parse.commands.length > 0 && words.length <= 4));
+
+      if (canUseCommands && parse.commands.length) {
+        parse.commands.forEach((label) => commitVoiceCommand(label));
+      }
+
+      if (wordRecognitionEnabled) {
+        const phrase = (!canUseCommands && parse.commands.length && parse.leftovers.length === 0)
+          ? words.join(" ")
+          : parse.leftovers.join(" ");
+        if (phrase) commitVoiceWords(phrase);
+      }
+    }
+
+    function parseSpeechTokens(words) {
+      const commands = [];
+      const leftovers = [];
+      for (let i = 0; i < words.length; i += 1) {
+        const word = words[i];
+        const two = i + 1 < words.length ? `${word} ${words[i + 1]}` : "";
+        if (["type", "press", "tap", "hit", "key"].includes(word)) continue;
+        const action = speechActionFor(two) || speechActionFor(word);
+        if (action) {
+          commands.push(action);
+          if (speechActionFor(two)) i += 1;
+          continue;
+        }
+        const letter = speechLetterFor(word);
+        if (letter) {
+          commands.push(letter);
+          continue;
+        }
+        leftovers.push(word);
+      }
+      return { commands, leftovers };
+    }
+
+    function normalizeSpeechTranscript(text) {
+      return String(text)
+        .toLowerCase()
+        .replace(/[.,!?;:]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function speechActionFor(word) {
+      const actions = {
+        "space": "SPACE",
+        "spacebar": "SPACE",
+        "backspace": "BACKSPACE",
+        "delete": "BACKSPACE",
+        "erase": "BACKSPACE",
+        "enter": "ENTER",
+        "return": "ENTER",
+        "newline": "ENTER",
+        "new line": "ENTER",
+        "next line": "ENTER"
+      };
+      return actions[word] || null;
+    }
+
+    function speechLetterFor(word) {
+      const nato = {
+        "alpha": "A", "bravo": "B", "charlie": "C", "delta": "D", "echo": "E", "foxtrot": "F",
+        "golf": "G", "hotel": "H", "india": "I", "juliett": "J", "juliet": "J", "kilo": "K",
+        "lima": "L", "mike": "M", "november": "N", "oscar": "O", "papa": "P", "quebec": "Q",
+        "romeo": "R", "sierra": "S", "tango": "T", "uniform": "U", "victor": "V", "whiskey": "W",
+        "xray": "X", "x-ray": "X", "yankee": "Y", "zulu": "Z"
+      };
+      if (nato[word]) return nato[word];
+      if (/^[a-z]$/.test(word)) return word.toUpperCase();
+      return null;
+    }
+
+    function commitVoiceCommand(label) {
+      applyKey(label);
+      lastGlobalCommitTime = performance.now();
+      lastGlobalKey = label;
+      lastTrigger = `voice → ${formatKeyLabel(label)}`;
+      triggerText.textContent = lastTrigger;
+      setStatus(`Voice typed ${formatKeyLabel(label)}`, "ok");
+      playFeedback();
+    }
+
+    function commitVoiceWords(phrase) {
+      const clean = phrase.trim();
+      if (!clean) return;
+      if (typedText && !/[\s\n]$/.test(typedText)) typedText += " ";
+      typedText += clean;
+      updateOutput();
+      lastTrigger = `voice words → ${clean}`;
+      triggerText.textContent = lastTrigger;
+      setStatus("Voice words added", "ok");
+      playFeedback();
+    }
+
+    async function loadVisionModule() {
+      if (!mediapipeModulePromise) {
+        mediapipeModulePromise = import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.mjs");
+      }
+      return mediapipeModulePromise;
+    }
+
     async function createHandLandmarker() {
       if (handLandmarker) return handLandmarker;
-      setStatus("Loading hand tracking model…", "warn");
+      setStatus("Loading hand tracking…", "warn");
+      const { HandLandmarker, FilesetResolver } = await loadVisionModule();
       const vision = await FilesetResolver.forVisionTasks(
         "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
       );
@@ -298,44 +543,75 @@
     }
 
     async function startCamera(deviceId = "") {
+      if (cameraStarting) return;
+      cameraStarting = true;
+      lastCameraError = "";
+      updateStartCameraUi(true, "Starting…");
+      trackingText.textContent = "Requesting camera access…";
+      trackingText.className = "warn";
       try {
-        await createHandLandmarker();
+        const startupError = getCameraSupportError();
+        if (startupError) {
+          const error = new Error(startupError);
+          error.name = "StartupError";
+          throw error;
+        }
         await ensureAudio();
-        stopCamera();
-        const constraints = deviceId
-          ? { video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }
-          : { video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "environment" }, audio: false };
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        stopCamera({ preserveStatus: true });
+        stream = await openCameraStream(deviceId);
+        currentDeviceId = getActiveDeviceId(stream) || deviceId || "";
+        prepareVideoElement();
         video.srcObject = stream;
-        await video.play();
+        await waitForVideoMetadata(video);
+        await safePlayVideo();
         running = true;
         resizeCanvas();
         await refreshCameraList();
         currentFacingHint = inferFacingHint(stream, currentDeviceId);
         syncMirror();
-        setStatus(`Camera running (${currentFacingHint})`, "ok");
-        trackingText.textContent = "Show one or two hands";
+        trackingText.textContent = "Camera live. Loading hand tracking…";
         trackingText.className = "warn";
+        setStatus(`Camera running (${currentFacingHint})`, "ok");
         requestAnimationFrame(loop);
+        createHandLandmarker()
+          .then(() => {
+            if (!running) return;
+            trackingText.textContent = "Show one or two hands";
+            trackingText.className = "warn";
+            setStatus(`Camera running (${currentFacingHint})`, "ok");
+          })
+          .catch((error) => {
+            console.error(error);
+            if (!running) return;
+            setStatus("Camera started, but hand tracking could not load.", "warn");
+            trackingText.textContent = "Camera live — tracking unavailable";
+            trackingText.className = "warn";
+          });
       } catch (error) {
         console.error(error);
-        setStatus("Camera failed. Use HTTPS and grant permission.", "bad");
-        trackingText.textContent = "Camera unavailable";
-        trackingText.className = "bad";
+        handleCameraStartError(error);
+      } finally {
+        cameraStarting = false;
+        updateStartCameraUi(false, running ? "Restart camera" : "Start camera");
       }
     }
 
-    function stopCamera() {
+    function stopCamera(options = {}) {
+
       running = false;
       if (stream) stream.getTracks().forEach((track) => track.stop());
       stream = null;
-      video.srcObject = null;
+      if (video.srcObject) video.srcObject = null;
+      if (!options.preserveStatus) {
+        setStatus(getStartupStatusText(), "warn");
+      }
     }
 
     async function refreshCameraList() {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videos = devices.filter((d) => d.kind === "videoinput");
+        const activeDeviceId = getActiveDeviceId(stream) || currentDeviceId || cameraSelect.value || "";
         cameraSelect.innerHTML = "";
         const fallback = document.createElement("option");
         fallback.value = "";
@@ -345,7 +621,7 @@
           const option = document.createElement("option");
           option.value = device.deviceId;
           option.textContent = device.label || `Camera ${index + 1}`;
-          if (device.deviceId === currentDeviceId) option.selected = true;
+          if (device.deviceId === activeDeviceId) option.selected = true;
           cameraSelect.appendChild(option);
         });
       } catch (error) {
@@ -354,6 +630,7 @@
     }
 
     function inferFacingHint(activeStream, deviceId) {
+
       try {
         const track = activeStream?.getVideoTracks?.()[0];
         const settings = track?.getSettings?.() || {};
@@ -370,6 +647,137 @@
         console.error(error);
       }
       return "unknown";
+    }
+
+    function prepareVideoElement() {
+      video.muted = true;
+      video.autoplay = true;
+      video.playsInline = true;
+      video.setAttribute("muted", "");
+      video.setAttribute("autoplay", "");
+      video.setAttribute("playsinline", "");
+      video.setAttribute("webkit-playsinline", "true");
+    }
+
+    function getStartupStatusText() {
+      if (window.location.protocol === "file:") return "Open Halo from localhost or HTTPS to use the camera";
+      return "Tap Start camera to begin";
+    }
+
+    function isLocalhostHost() {
+      return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+    }
+
+    function getCameraSupportError() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        return "This browser does not support camera access.";
+      }
+      if (!window.isSecureContext && !isLocalhostHost()) {
+        return "Camera access requires HTTPS or localhost.";
+      }
+      return "";
+    }
+
+    function getActiveDeviceId(activeStream) {
+      return activeStream?.getVideoTracks?.()[0]?.getSettings?.().deviceId || "";
+    }
+
+    function buildCameraAttempts(deviceId) {
+      const hd = { width: { ideal: 1280 }, height: { ideal: 720 } };
+      const attempts = [];
+      if (deviceId) {
+        attempts.push({ video: { deviceId: { exact: deviceId }, ...hd }, audio: false });
+        attempts.push({ video: { deviceId: { ideal: deviceId }, ...hd }, audio: false });
+      }
+      attempts.push({ video: { facingMode: { ideal: "environment" }, ...hd }, audio: false });
+      attempts.push({ video: { facingMode: { ideal: "user" }, ...hd }, audio: false });
+      attempts.push({ video: hd, audio: false });
+      attempts.push({ video: true, audio: false });
+      return attempts;
+    }
+
+    async function openCameraStream(deviceId) {
+      const errors = [];
+      for (const constraints of buildCameraAttempts(deviceId)) {
+        try {
+          return await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (error) {
+          errors.push(error);
+          const fatal = ["NotAllowedError", "SecurityError", "AbortError"].includes(error?.name);
+          if (fatal) break;
+        }
+      }
+      throw errors[errors.length - 1] || new Error("Unable to start the camera.");
+    }
+
+    async function waitForVideoMetadata(videoEl) {
+      if (videoEl.readyState >= 1 && videoEl.videoWidth > 0 && videoEl.videoHeight > 0) return;
+      await new Promise((resolve, reject) => {
+        const onReady = () => {
+          cleanup();
+          resolve();
+        };
+        const onError = () => {
+          cleanup();
+          reject(new Error("Video metadata did not load."));
+        };
+        const timer = setTimeout(() => {
+          cleanup();
+          reject(new Error("Timed out while waiting for the camera stream."));
+        }, 6000);
+        function cleanup() {
+          clearTimeout(timer);
+          videoEl.removeEventListener("loadedmetadata", onReady);
+          videoEl.removeEventListener("canplay", onReady);
+          videoEl.removeEventListener("error", onError);
+        }
+        videoEl.addEventListener("loadedmetadata", onReady, { once: true });
+        videoEl.addEventListener("canplay", onReady, { once: true });
+        videoEl.addEventListener("error", onError, { once: true });
+      });
+    }
+
+    async function safePlayVideo() {
+      try {
+        await video.play();
+      } catch (error) {
+        const message = String(error?.message || error || "");
+        if (!/interrupted|already playing/i.test(message)) throw error;
+      }
+    }
+
+    function describeCameraError(error) {
+      const name = error?.name || "Error";
+      if (name === "StartupError") return error.message;
+      if (name === "NotAllowedError") return "Camera permission was blocked. Allow access and try again.";
+      if (name === "NotFoundError") return "No camera was found on this device.";
+      if (name === "NotReadableError" || name === "TrackStartError") return "The camera is busy in another app or unavailable.";
+      if (name === "OverconstrainedError") return "The selected camera is unavailable. Pick a different camera and try again.";
+      if (name === "SecurityError") return "Camera access is blocked because this page is not running on HTTPS or localhost.";
+      if (name === "AbortError") return "Camera start was interrupted. Try again.";
+      if (error?.message) return error.message;
+      return "Camera failed to start.";
+    }
+
+    function handleCameraStartError(error) {
+      stopCamera({ preserveStatus: true });
+      lastCameraError = describeCameraError(error);
+      setStatus(lastCameraError, "bad");
+      trackingText.textContent = "Camera unavailable";
+      trackingText.className = "bad";
+    }
+
+    function updateStartCameraUi(isBusy, label) {
+      startCameraBtn.disabled = isBusy;
+      startCameraBtn.textContent = label;
+    }
+
+    async function maybeAutoStartCamera() {
+      const params = new URLSearchParams(window.location.search);
+      const autostart = ["1", "true", "yes"].includes(String(params.get("autostart") || params.get("camera") || "").toLowerCase());
+      if (autostart) {
+        await startCamera(currentDeviceId);
+      }
     }
 
     function loop(now) {
@@ -391,6 +799,7 @@
         trackingText.className = "warn";
         fingertipsText.textContent = "0";
         hoveredText.textContent = "—";
+        pressText.textContent = "—";
         drawGhostBoards();
         drawOverlayHints();
         return;

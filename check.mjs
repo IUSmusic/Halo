@@ -1,5 +1,3 @@
-    import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.mjs";
-
     const KEY_ROWS = [
       ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
       ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
@@ -55,6 +53,7 @@
     const heardText = document.getElementById("heardText");
 
     let handLandmarker = null;
+    let mediapipeModulePromise = null;
     let stream = null;
     let running = false;
     let latestResult = null;
@@ -99,6 +98,8 @@
     const smoothedPoints = new Map();
     const fingerStates = new Map();
     let audioCtx = null;
+    let cameraStarting = false;
+    let lastCameraError = "";
 
     const DRAW_POINT_STEP = 6;
     const PINCH_THRESHOLD = 0.055;
@@ -112,18 +113,8 @@
     const GLOBAL_REPEAT_GUARD_MS = 90;
     const ROTATION_STEP_DEG = 6;
 
-
-    window.addEventListener("error", (event) => {
-      console.error(event.error || event.message);
-      setStatus(`Runtime error: ${event.message || "unknown"}`, "bad");
-    });
-    window.addEventListener("unhandledrejection", (event) => {
-      console.error(event.reason);
-      const msg = event.reason?.message || String(event.reason || "unknown");
-      setStatus(`Startup error: ${msg}`, "bad");
-    });
-
-    setStatus("Halo loading…", "warn");
+    prepareVideoElement();
+    setStatus(getStartupStatusText(), "warn");
     updateOutput();
     refreshPhaseBadge();
     updateRotationText();
@@ -131,8 +122,13 @@
     syncMirror();
     setupVoiceRecognition();
     updateVoiceUi();
+    if (navigator.mediaDevices?.addEventListener) {
+      navigator.mediaDevices.addEventListener("devicechange", () => {
+        refreshCameraList().catch((error) => console.error(error));
+      });
+    }
 
-    startCameraBtn.addEventListener("click", () => startCamera(currentDeviceId));
+    startCameraBtn.addEventListener("click", () => { void startCamera(currentDeviceId); });
     cameraSelect.addEventListener("change", async () => {
       currentDeviceId = cameraSelect.value;
       if (running) await startCamera(currentDeviceId);
@@ -179,6 +175,9 @@
       if (voiceListening) stopVoiceRecognition();
       else await startVoiceRecognition();
     });
+    void refreshCameraList();
+    void maybeAutoStartCamera();
+
     accuracyModeEl.addEventListener("change", () => {
       const mode = accuracyModeEl.value;
       if (mode === "fast") {
@@ -285,6 +284,7 @@
       pressText.textContent = "—";
       heardText.textContent = "—";
       stopVoiceRecognition();
+      updateStartCameraUi(false, running ? "Restart camera" : "Start camera");
       updateOutput();
       updateRotationText();
       refreshPhaseBadge();
@@ -505,7 +505,7 @@
     function commitVoiceWords(phrase) {
       const clean = phrase.trim();
       if (!clean) return;
-      if (typedText && !/\s$/.test(typedText)) typedText += " ";
+      if (typedText && !/[\s\n]$/.test(typedText)) typedText += " ";
       typedText += clean;
       updateOutput();
       lastTrigger = `voice words → ${clean}`;
@@ -514,9 +514,17 @@
       playFeedback();
     }
 
+    async function loadVisionModule() {
+      if (!mediapipeModulePromise) {
+        mediapipeModulePromise = import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.mjs");
+      }
+      return mediapipeModulePromise;
+    }
+
     async function createHandLandmarker() {
       if (handLandmarker) return handLandmarker;
-      setStatus("Loading hand tracking model…", "warn");
+      setStatus("Loading hand tracking…", "warn");
+      const { HandLandmarker, FilesetResolver } = await loadVisionModule();
       const vision = await FilesetResolver.forVisionTasks(
         "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
       );
@@ -535,52 +543,75 @@
     }
 
     async function startCamera(deviceId = "") {
+      if (cameraStarting) return;
+      cameraStarting = true;
+      lastCameraError = "";
+      updateStartCameraUi(true, "Starting…");
+      trackingText.textContent = "Requesting camera access…";
+      trackingText.className = "warn";
       try {
-        await createHandLandmarker();
-        await ensureAudio();
-        stopCamera();
-        const preferredConstraints = deviceId
-          ? { video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }
-          : { video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "environment" }, audio: false };
-
-        try {
-          stream = await navigator.mediaDevices.getUserMedia(preferredConstraints);
-        } catch (primaryError) {
-          console.warn("Preferred camera constraints failed, retrying with basic video.", primaryError);
-          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        const startupError = getCameraSupportError();
+        if (startupError) {
+          const error = new Error(startupError);
+          error.name = "StartupError";
+          throw error;
         }
-
+        await ensureAudio();
+        stopCamera({ preserveStatus: true });
+        stream = await openCameraStream(deviceId);
+        currentDeviceId = getActiveDeviceId(stream) || deviceId || "";
+        prepareVideoElement();
         video.srcObject = stream;
-        await video.play();
+        await waitForVideoMetadata(video);
+        await safePlayVideo();
         running = true;
         resizeCanvas();
         await refreshCameraList();
         currentFacingHint = inferFacingHint(stream, currentDeviceId);
         syncMirror();
-        setStatus(`Camera running (${currentFacingHint})`, "ok");
-        trackingText.textContent = "Show one or two hands";
+        trackingText.textContent = "Camera live. Loading hand tracking…";
         trackingText.className = "warn";
+        setStatus(`Camera running (${currentFacingHint})`, "ok");
         requestAnimationFrame(loop);
+        createHandLandmarker()
+          .then(() => {
+            if (!running) return;
+            trackingText.textContent = "Show one or two hands";
+            trackingText.className = "warn";
+            setStatus(`Camera running (${currentFacingHint})`, "ok");
+          })
+          .catch((error) => {
+            console.error(error);
+            if (!running) return;
+            setStatus("Camera started, but hand tracking could not load.", "warn");
+            trackingText.textContent = "Camera live — tracking unavailable";
+            trackingText.className = "warn";
+          });
       } catch (error) {
         console.error(error);
-        const message = error?.message ? `Camera failed: ${error.message}` : "Camera failed. Use HTTPS and grant permission.";
-        setStatus(message, "bad");
-        trackingText.textContent = "Camera unavailable";
-        trackingText.className = "bad";
+        handleCameraStartError(error);
+      } finally {
+        cameraStarting = false;
+        updateStartCameraUi(false, running ? "Restart camera" : "Start camera");
       }
     }
 
-    function stopCamera() {
+    function stopCamera(options = {}) {
+
       running = false;
       if (stream) stream.getTracks().forEach((track) => track.stop());
       stream = null;
-      video.srcObject = null;
+      if (video.srcObject) video.srcObject = null;
+      if (!options.preserveStatus) {
+        setStatus(getStartupStatusText(), "warn");
+      }
     }
 
     async function refreshCameraList() {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videos = devices.filter((d) => d.kind === "videoinput");
+        const activeDeviceId = getActiveDeviceId(stream) || currentDeviceId || cameraSelect.value || "";
         cameraSelect.innerHTML = "";
         const fallback = document.createElement("option");
         fallback.value = "";
@@ -590,7 +621,7 @@
           const option = document.createElement("option");
           option.value = device.deviceId;
           option.textContent = device.label || `Camera ${index + 1}`;
-          if (device.deviceId === currentDeviceId) option.selected = true;
+          if (device.deviceId === activeDeviceId) option.selected = true;
           cameraSelect.appendChild(option);
         });
       } catch (error) {
@@ -599,6 +630,7 @@
     }
 
     function inferFacingHint(activeStream, deviceId) {
+
       try {
         const track = activeStream?.getVideoTracks?.()[0];
         const settings = track?.getSettings?.() || {};
@@ -615,6 +647,137 @@
         console.error(error);
       }
       return "unknown";
+    }
+
+    function prepareVideoElement() {
+      video.muted = true;
+      video.autoplay = true;
+      video.playsInline = true;
+      video.setAttribute("muted", "");
+      video.setAttribute("autoplay", "");
+      video.setAttribute("playsinline", "");
+      video.setAttribute("webkit-playsinline", "true");
+    }
+
+    function getStartupStatusText() {
+      if (window.location.protocol === "file:") return "Open Halo from localhost or HTTPS to use the camera";
+      return "Tap Start camera to begin";
+    }
+
+    function isLocalhostHost() {
+      return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+    }
+
+    function getCameraSupportError() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        return "This browser does not support camera access.";
+      }
+      if (!window.isSecureContext && !isLocalhostHost()) {
+        return "Camera access requires HTTPS or localhost.";
+      }
+      return "";
+    }
+
+    function getActiveDeviceId(activeStream) {
+      return activeStream?.getVideoTracks?.()[0]?.getSettings?.().deviceId || "";
+    }
+
+    function buildCameraAttempts(deviceId) {
+      const hd = { width: { ideal: 1280 }, height: { ideal: 720 } };
+      const attempts = [];
+      if (deviceId) {
+        attempts.push({ video: { deviceId: { exact: deviceId }, ...hd }, audio: false });
+        attempts.push({ video: { deviceId: { ideal: deviceId }, ...hd }, audio: false });
+      }
+      attempts.push({ video: { facingMode: { ideal: "environment" }, ...hd }, audio: false });
+      attempts.push({ video: { facingMode: { ideal: "user" }, ...hd }, audio: false });
+      attempts.push({ video: hd, audio: false });
+      attempts.push({ video: true, audio: false });
+      return attempts;
+    }
+
+    async function openCameraStream(deviceId) {
+      const errors = [];
+      for (const constraints of buildCameraAttempts(deviceId)) {
+        try {
+          return await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (error) {
+          errors.push(error);
+          const fatal = ["NotAllowedError", "SecurityError", "AbortError"].includes(error?.name);
+          if (fatal) break;
+        }
+      }
+      throw errors[errors.length - 1] || new Error("Unable to start the camera.");
+    }
+
+    async function waitForVideoMetadata(videoEl) {
+      if (videoEl.readyState >= 1 && videoEl.videoWidth > 0 && videoEl.videoHeight > 0) return;
+      await new Promise((resolve, reject) => {
+        const onReady = () => {
+          cleanup();
+          resolve();
+        };
+        const onError = () => {
+          cleanup();
+          reject(new Error("Video metadata did not load."));
+        };
+        const timer = setTimeout(() => {
+          cleanup();
+          reject(new Error("Timed out while waiting for the camera stream."));
+        }, 6000);
+        function cleanup() {
+          clearTimeout(timer);
+          videoEl.removeEventListener("loadedmetadata", onReady);
+          videoEl.removeEventListener("canplay", onReady);
+          videoEl.removeEventListener("error", onError);
+        }
+        videoEl.addEventListener("loadedmetadata", onReady, { once: true });
+        videoEl.addEventListener("canplay", onReady, { once: true });
+        videoEl.addEventListener("error", onError, { once: true });
+      });
+    }
+
+    async function safePlayVideo() {
+      try {
+        await video.play();
+      } catch (error) {
+        const message = String(error?.message || error || "");
+        if (!/interrupted|already playing/i.test(message)) throw error;
+      }
+    }
+
+    function describeCameraError(error) {
+      const name = error?.name || "Error";
+      if (name === "StartupError") return error.message;
+      if (name === "NotAllowedError") return "Camera permission was blocked. Allow access and try again.";
+      if (name === "NotFoundError") return "No camera was found on this device.";
+      if (name === "NotReadableError" || name === "TrackStartError") return "The camera is busy in another app or unavailable.";
+      if (name === "OverconstrainedError") return "The selected camera is unavailable. Pick a different camera and try again.";
+      if (name === "SecurityError") return "Camera access is blocked because this page is not running on HTTPS or localhost.";
+      if (name === "AbortError") return "Camera start was interrupted. Try again.";
+      if (error?.message) return error.message;
+      return "Camera failed to start.";
+    }
+
+    function handleCameraStartError(error) {
+      stopCamera({ preserveStatus: true });
+      lastCameraError = describeCameraError(error);
+      setStatus(lastCameraError, "bad");
+      trackingText.textContent = "Camera unavailable";
+      trackingText.className = "bad";
+    }
+
+    function updateStartCameraUi(isBusy, label) {
+      startCameraBtn.disabled = isBusy;
+      startCameraBtn.textContent = label;
+    }
+
+    async function maybeAutoStartCamera() {
+      const params = new URLSearchParams(window.location.search);
+      const autostart = ["1", "true", "yes"].includes(String(params.get("autostart") || params.get("camera") || "").toLowerCase());
+      if (autostart) {
+        await startCamera(currentDeviceId);
+      }
     }
 
     function loop(now) {
@@ -1287,3 +1450,4 @@
     function updateModeText() {
       modeText.textContent = `${anchorMode} / ${placementMode}`;
     }
+  
