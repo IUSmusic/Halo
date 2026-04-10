@@ -70,7 +70,6 @@ Serve over HTTPS or use GitHub Pages. Camera access and installability will not 
 ## Offline MediaPipe setup
 
 This build is configured to load MediaPipe entirely from `./external/` instead of any CDN.
-Place these files in the `external/` folder next to `index.html`:
 
 - `vision_bundle.mjs`
 - `hand_landmarker.task`
