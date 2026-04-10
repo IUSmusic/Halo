@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Halo</title>
+  <style>
+    :root {
+      --bg: #030712;
+      --panel: rgba(8, 15, 30, 0.78);
+      --panel-border: rgba(255, 255, 255, 0.1);
+      --text: #eff6ff;
+      --muted: #93a4bf;
+      --cyan: #22d3ee;
+      --blue: #60a5fa;
+      --green: #86efac;
+      --pink: #f9a8d4;
+      --warn: #fde68a;
+      --bad: #fda4af;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top left, rgba(34, 211, 238, 0.12), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(96, 165, 250, 0.12), transparent 26%),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1.45fr) minmax(340px, 440px);
+      gap: 18px;
+      padding: 18px;
+    }
+
+    .stage,
+    .panel {
+      border-radius: 28px;
+      overflow: hidden;
+      border: 1px solid var(--panel-border);
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 16px 44px rgba(0, 0, 0, 0.3);
+    }
+
+    .stage {
+      position: relative;
+      min-height: 78vh;
+    }
+
+    .toolbar {
+      position: absolute;
+      inset: 14px 14px auto 14px;
+      z-index: 5;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      pointer-events: none;
+    }
+
+    .toolbar-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      pointer-events: auto;
+    }
+
+    button,
+    select,
+    .pill {
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(4, 10, 22, 0.78);
+      color: var(--text);
+      font: inherit;
+    }
+
+    button,
+    select {
+      padding: 10px 14px;
+      transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+    }
+
+    button:hover,
+    select:hover {
+      transform: translateY(-1px);
+      border-color: rgba(96, 165, 250, 0.5);
+    }
+
+    button { cursor: pointer; }
+
+    button.primary {
+      background: linear-gradient(135deg, rgba(34, 211, 238, 0.25), rgba(96, 165, 250, 0.18));
+      border-color: rgba(96, 165, 250, 0.58);
+    }
+
+    button.secondary {
+      border-color: rgba(34, 211, 238, 0.38);
+    }
+
+    button.danger {
+      border-color: rgba(253, 164, 175, 0.45);
+      color: #ffe4eb;
+    }
+
+    .pill {
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .viewport {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 78vh;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(2, 8, 18, 0.18), rgba(2, 8, 18, 0.42));
+    }
+
+    video,
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    canvas { pointer-events: none; }
+    .mirrored { transform: scaleX(-1); }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      padding: 22px 22px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .eyebrow {
+      color: var(--cyan);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 29px;
+      line-height: 1.06;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .panel-body {
+      padding: 18px 22px 22px;
+      display: grid;
+      gap: 16px;
+      overflow: auto;
+      align-content: start;
+    }
+
+    .card {
+      border-radius: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.03);
+      padding: 16px;
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 15px;
+    }
+
+    .output {
+      min-height: 150px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.24);
+      padding: 14px;
+      font-size: 18px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric {
+      border-radius: 16px;
+      padding: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .metric select {
+      width: 100%;
+      padding: 9px 12px;
+      background: rgba(4, 10, 22, 0.82);
+    }
+
+    .list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      display: grid;
+      gap: 8px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .legend {
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .legend strong { color: var(--text); }
+    .small { color: var(--muted); font-size: 12px; line-height: 1.55; margin: 8px 0 0; }
+    .ok { color: var(--green); }
+    .warn { color: var(--warn); }
+    .bad { color: var(--bad); }
+
+    @media (max-width: 1120px) {
+      .app { grid-template-columns: 1fr; }
+      .stage, .viewport { min-height: 60vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section class="stage">
+      <div class="toolbar">
+        <div class="toolbar-group">
+          <button id="startCameraBtn" class="primary">Start camera</button>
+          <select id="cameraSelect" title="Camera source">
+            <option value="">Default camera</option>
+          </select>
+          <button id="drawBtn" class="secondary">Start drawing rectangle</button>
+          <button id="finishBtn">Finish rectangle</button>
+          <button id="pinBtn">Pin keyboard</button>
+          <button id="resetBtn" class="danger">Reset</button>
+        </div>
+        <div class="toolbar-group">
+          <span id="phaseBadge" class="pill">Phase: calibration</span>
+          <span id="statusBadge" class="pill">Camera idle</span>
+        </div>
+      </div>
+
+      <div class="viewport">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="overlay"></canvas>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <div class="panel-header">
+        <div class="eyebrow">Pinned surface keyboard</div>
+        <h1>GhostBoard Surface Pad</h1>
+        <p class="sub">
+          First the user draws a rectangle in the air over any visible surface. The app turns that shape into a neon 2D keyboard pad, then pins it in place for typing while the camera remains still.
+        </p>
+      </div>
+
+      <div class="panel-body">
+        <section class="card">
+          <h2>Typed output</h2>
+          <div id="output" class="output"></div>
+        </section>
+
+        <section class="card">
+          <h2>Calibration and typing settings</h2>
+          <div class="metrics">
+            <div class="metric">
+              <div class="metric-label">Selection mode</div>
+              <select id="selectionMode">
+                <option value="pinch">Pinch</option>
+                <option value="dwell">Dwell</option>
+                <option value="both" selected>Both</option>
+              </select>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Mirror view</div>
+              <select id="mirrorMode">
+                <option value="on" selected>On</option>
+                <option value="off">Off</option>
+              </select>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Keyboard scale</div>
+              <select id="scaleMode">
+                <option value="0.85">Compact</option>
+                <option value="1" selected>Normal</option>
+                <option value="1.2">Large</option>
+                <option value="1.4">XL</option>
+              </select>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Accuracy filter</div>
+              <select id="accuracyMode">
+                <option value="fast">Fast</option>
+                <option value="balanced" selected>Balanced</option>
+                <option value="stable">Stable</option>
+              </select>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Dwell speed</div>
+              <select id="dwellMode">
+                <option value="760">Slow</option>
+                <option value="520" selected>Normal</option>
+                <option value="320">Fast</option>
+              </select>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Neon intensity</div>
+              <select id="neonMode">
+                <option value="0.7">Soft</option>
+                <option value="1" selected>Normal</option>
+                <option value="1.4">Bright</option>
+              </select>
+            </div>
+          </div>
+          <p class="small">
+            External cameras work too as long as the browser exposes them as video devices. After the first camera permission grant, use the camera selector to switch sources.
+          </p>
+        </section>
+
+        <section class="card">
+          <h2>How it works</h2>
+          <ol class="list">
+            <li>Start the camera and choose the camera source you want.</li>
+            <li>Press <strong>Start drawing rectangle</strong> and trace a wide rectangle in the air over the surface where the keyboard should live.</li>
+            <li>Press <strong>Finish rectangle</strong> to preview the detected keyboard pad.</li>
+            <li>Press <strong>Pin keyboard</strong> to lock it in place.</li>
+            <li>Type by moving your fingertip over keys and using pinch, dwell, or both.</li>
+          </ol>
+          <p class="small">
+            Best accuracy comes from a stationary camera, a clearly visible surface, and a rectangle drawn as neatly as possible.
+          </p>
+        </section>
+
+        <section class="card">
+          <h2>Live state</h2>
+          <div class="legend">
+            <div><strong>Tracking:</strong> <span id="trackingText" class="warn">Waiting for camera</span></div>
+            <div><strong>Detected shape:</strong> <span id="shapeText">—</span></div>
+            <div><strong>Hovered key:</strong> <span id="hoveredText">—</span></div>
+            <div><strong>Trigger:</strong> <span id="triggerText">—</span></div>
+            <div><strong>Pinch distance:</strong> <span id="pinchText">—</span></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Product direction</h2>
+          <p class="small">
+            This version treats the pinned keyboard as a 2D pad in the camera image, which is lightweight and deployable on GitHub Pages. A later version can add true surface tracking, corner refinement, keystone correction, and stronger tap recognition.
+          </p>
+        </section>
+      </div>
+    </aside>
+  </div>
+
+  <script type="module">
+    import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0";
+
+    const KEY_ROWS = [
+      ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+      ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+      ["Z", "X", "C", "V", "B", "N", "M"],
+      ["SPACE", "BACKSPACE", "ENTER"]
+    ];
+
+    const SPECIAL_LABELS = {
+      SPACE: "space",
+      BACKSPACE: "⌫",
+      ENTER: "⏎"
+    };
+
+    const KEY_LAYOUT = buildLayout(KEY_ROWS);
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("overlay");
+    const ctx = canvas.getContext("2d");
+
+    const startCameraBtn = document.getElementById("startCameraBtn");
+    const cameraSelect = document.getElementById("cameraSelect");
+    const drawBtn = document.getElementById("drawBtn");
+    const finishBtn = document.getElementById("finishBtn");
+    const pinBtn = document.getElementById("pinBtn");
+    const resetBtn = document.getElementById("resetBtn");
+
+    const selectionModeEl = document.getElementById("selectionMode");
+    const mirrorModeEl = document.getElementById("mirrorMode");
+    const scaleModeEl = document.getElementById("scaleMode");
+    const accuracyModeEl = document.getElementById("accuracyMode");
+    const dwellModeEl = document.getElementById("dwellMode");
+    const neonModeEl = document.getElementById("neonMode");
+
+    const outputEl = document.getElementById("output");
+    const phaseBadge = document.getElementById("phaseBadge");
+    const statusBadge = document.getElementById("statusBadge");
+    const trackingText = document.getElementById("trackingText");
+    const shapeText = document.getElementById("shapeText");
+    const hoveredText = document.getElementById("hoveredText");
+    const triggerText = document.getElementById("triggerText");
+    const pinchText = document.getElementById("pinchText");
+
+    let handLandmarker = null;
+    let stream = null;
+    let running = false;
+    let lastVideoTime = -1;
+    let latestResult = null;
+    let currentDeviceId = "";
+
+    let phase = "calibration";
+    let drawing = false;
+    let drawnPoints = [];
+    let previewAnchor = null;
+    let pinnedAnchor = null;
+    let smoothedFinger = null;
+
+    let typedText = "";
+    let hoveredKey = null;
+    let hoverSince = 0;
+    let lastCommittedKey = null;
+    let lastCommitTime = 0;
+    let lastTrigger = "—";
+
+    let mirror = true;
+    let selectionMode = "both";
+    let dwellMs = 520;
+    let keyboardScale = 1;
+    let smoothingAlpha = 0.32;
+    let cooldownMs = 260;
+    let neonStrength = 1;
+
+    const PINCH_THRESHOLD = 0.055;
+    const DRAW_POINT_STEP = 6;
+
+    updateOutput();
+    syncMirror();
+    refreshPhaseBadge();
+
+    startCameraBtn.addEventListener("click", () => startCamera(currentDeviceId));
+    cameraSelect.addEventListener("change", async () => {
+      currentDeviceId = cameraSelect.value;
+      if (running) {
+        await startCamera(currentDeviceId);
+      }
+    });
+
+    drawBtn.addEventListener("click", () => {
+      if (!running) {
+        setStatus("Start the camera first", "warn");
+        return;
+      }
+      drawing = true;
+      phase = "drawing";
+      drawnPoints = [];
+      previewAnchor = null;
+      pinnedAnchor = null;
+      shapeText.textContent = "Tracing rectangle";
+      hoveredText.textContent = "—";
+      triggerText.textContent = "—";
+      refreshPhaseBadge();
+      setStatus("Trace a rectangle with your index finger", "ok");
+    });
+
+    finishBtn.addEventListener("click", () => {
+      if (drawnPoints.length < 20) {
+        setStatus("Draw a larger rectangle first", "warn");
+        return;
+      }
+      const anchor = anchorFromPath(drawnPoints);
+      if (!anchor) {
+        setStatus("Could not detect a usable keyboard shape", "bad");
+        return;
+      }
+      previewAnchor = anchor;
+      pinnedAnchor = null;
+      drawing = false;
+      phase = "preview";
+      shapeText.textContent = `${Math.round(anchor.baseWidth)}×${Math.round(anchor.baseHeight)} preview`;
+      refreshPhaseBadge();
+      setStatus("Rectangle detected. Pin it when it looks right.", "ok");
+    });
+
+    pinBtn.addEventListener("click", () => {
+      if (!previewAnchor) {
+        setStatus("Finish a rectangle first", "warn");
+        return;
+      }
+      pinnedAnchor = { ...previewAnchor };
+      phase = "typing";
+      drawing = false;
+      refreshPhaseBadge();
+      setStatus("Keyboard pinned. Keep the camera still.", "ok");
+    });
+
+    resetBtn.addEventListener("click", () => {
+      phase = "calibration";
+      drawing = false;
+      drawnPoints = [];
+      previewAnchor = null;
+      pinnedAnchor = null;
+      smoothedFinger = null;
+      hoveredKey = null;
+      hoverSince = 0;
+      shapeText.textContent = "—";
+      hoveredText.textContent = "—";
+      triggerText.textContent = "—";
+      pinchText.textContent = "—";
+      refreshPhaseBadge();
+      setStatus("Calibration reset", "ok");
+    });
+
+    selectionModeEl.addEventListener("change", () => {
+      selectionMode = selectionModeEl.value;
+    });
+
+    mirrorModeEl.addEventListener("change", () => {
+      mirror = mirrorModeEl.value === "on";
+      syncMirror();
+    });
+
+    scaleModeEl.addEventListener("change", () => {
+      keyboardScale = Number(scaleModeEl.value);
+    });
+
+    dwellModeEl.addEventListener("change", () => {
+      dwellMs = Number(dwellModeEl.value);
+    });
+
+    neonModeEl.addEventListener("change", () => {
+      neonStrength = Number(neonModeEl.value);
+    });
+
+    accuracyModeEl.addEventListener("change", () => {
+      const mode = accuracyModeEl.value;
+      if (mode === "fast") {
+        smoothingAlpha = 0.55;
+        cooldownMs = 180;
+      } else if (mode === "stable") {
+        smoothingAlpha = 0.18;
+        cooldownMs = 320;
+      } else {
+        smoothingAlpha = 0.32;
+        cooldownMs = 260;
+      }
+    });
+
+    window.addEventListener("resize", resizeCanvas);
+
+    async function createHandLandmarker() {
+      if (handLandmarker) return handLandmarker;
+      setStatus("Loading hand tracking model…", "warn");
+      const vision = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
+      );
+      handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath:
+            "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+          delegate: "GPU"
+        },
+        runningMode: "VIDEO",
+        numHands: 2,
+        minHandDetectionConfidence: 0.55,
+        minHandPresenceConfidence: 0.55,
+        minTrackingConfidence: 0.55
+      });
+      return handLandmarker;
+    }
+
+    async function startCamera(deviceId = "") {
+      try {
+        await createHandLandmarker();
+        stopCamera();
+
+        const constraints = deviceId
+          ? { video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }
+          : { video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "environment" }, audio: false };
+
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = stream;
+        await video.play();
+        running = true;
+        resizeCanvas();
+        await refreshCameraList();
+        setStatus("Camera running", "ok");
+        trackingText.textContent = "Show your hand to calibrate";
+        trackingText.className = "warn";
+        requestAnimationFrame(loop);
+      } catch (error) {
+        console.error(error);
+        setStatus("Camera failed. Use HTTPS and grant camera permission.", "bad");
+        trackingText.textContent = "Camera unavailable";
+        trackingText.className = "bad";
+      }
+    }
+
+    function stopCamera() {
+      running = false;
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+      stream = null;
+      video.srcObject = null;
+    }
+
+    async function refreshCameraList() {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videos = devices.filter((d) => d.kind === "videoinput");
+        cameraSelect.innerHTML = "";
+        const fallback = document.createElement("option");
+        fallback.value = "";
+        fallback.textContent = "Default camera";
+        cameraSelect.appendChild(fallback);
+        videos.forEach((device, index) => {
+          const option = document.createElement("option");
+          option.value = device.deviceId;
+          option.textContent = device.label || `Camera ${index + 1}`;
+          if (device.deviceId === currentDeviceId) option.selected = true;
+          cameraSelect.appendChild(option);
+        });
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    function loop(now) {
+      if (!running) return;
+      resizeCanvas();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (video.currentTime !== lastVideoTime && handLandmarker) {
+        lastVideoTime = video.currentTime;
+        latestResult = handLandmarker.detectForVideo(video, now);
+      }
+
+      renderFrame(now, latestResult);
+      requestAnimationFrame(loop);
+    }
+
+    function renderFrame(now, result) {
+      const activeAnchor = pinnedAnchor || previewAnchor;
+      if (activeAnchor) {
+        drawNeonBoard(getScaledAnchor(activeAnchor), !pinnedAnchor);
+        if (pinnedAnchor) drawKeyboard(getScaledAnchor(pinnedAnchor), hoveredKey, now);
+      }
+
+      if (!result || !result.landmarks || result.landmarks.length === 0) {
+        trackingText.textContent = "No hands detected";
+        trackingText.className = "warn";
+        drawOverlayHints();
+        return;
+      }
+
+      trackingText.textContent = `${result.landmarks.length} hand${result.landmarks.length > 1 ? "s" : ""} tracked`;
+      trackingText.className = "ok";
+
+      const hand = result.landmarks[0];
+      const rawIndex = landmarkToPoint(hand[8]);
+      const indexPoint = smoothPoint(rawIndex);
+      const thumbPoint = landmarkToPoint(hand[4]);
+      const pinchDistance = distance(indexPoint, thumbPoint) / Math.max(canvas.width, canvas.height);
+      pinchText.textContent = pinchDistance.toFixed(3);
+
+      drawHand(hand, indexPoint, thumbPoint);
+      drawCursor(indexPoint, pinchDistance);
+
+      if (drawing) {
+        maybeAddDrawPoint(indexPoint);
+        drawPath();
+      }
+
+      if (pinnedAnchor) {
+        handleTyping(indexPoint, pinchDistance, now, getScaledAnchor(pinnedAnchor));
+      } else {
+        hoveredKey = null;
+        hoveredText.textContent = "—";
+      }
+
+      if (!activeAnchor) drawOverlayHints();
+    }
+
+    function handleTyping(indexPoint, pinchDistance, now, anchor) {
+      const hit = keyAtPoint(indexPoint, anchor);
+      hoveredKey = hit?.key ?? null;
+      hoveredText.textContent = hoveredKey ? formatKeyLabel(hoveredKey.label) : "—";
+
+      if (hoveredKey) {
+        if (lastCommittedKey !== hoveredKey.label) {
+          hoverSince = hoverSince || now;
+        }
+      } else {
+        hoverSince = 0;
+      }
+
+      const canPinch = selectionMode === "pinch" || selectionMode === "both";
+      const canDwell = selectionMode === "dwell" || selectionMode === "both";
+      let committed = false;
+
+      if (hoveredKey && canPinch && pinchDistance < PINCH_THRESHOLD) {
+        committed = tryCommitKey(hoveredKey.label, now, "pinch");
+      }
+
+      if (!committed && hoveredKey && canDwell) {
+        const startedAt = hoverSince || now;
+        hoverSince = startedAt;
+        if (now - startedAt >= dwellMs) {
+          committed = tryCommitKey(hoveredKey.label, now, "dwell");
+        }
+      }
+
+      if (!committed) {
+        triggerText.textContent = lastTrigger;
+      }
+    }
+
+    function tryCommitKey(label, now, source) {
+      if (now - lastCommitTime < cooldownMs && lastCommittedKey === label) return false;
+      applyKey(label);
+      lastCommittedKey = label;
+      lastCommitTime = now;
+      hoverSince = now;
+      lastTrigger = `${source} → ${formatKeyLabel(label)}`;
+      triggerText.textContent = lastTrigger;
+      setStatus(`Typed ${formatKeyLabel(label)}`, "ok");
+      return true;
+    }
+
+    function applyKey(label) {
+      if (label === "SPACE") typedText += " ";
+      else if (label === "BACKSPACE") typedText = typedText.slice(0, -1);
+      else if (label === "ENTER") typedText += "\n";
+      else typedText += label;
+      updateOutput();
+    }
+
+    function maybeAddDrawPoint(point) {
+      const last = drawnPoints[drawnPoints.length - 1];
+      if (!last || distance(last, point) >= DRAW_POINT_STEP) {
+        drawnPoints.push({ x: point.x, y: point.y });
+      }
+    }
+
+    function drawPath() {
+      if (drawnPoints.length < 2) return;
+      ctx.save();
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.shadowColor = `rgba(34, 211, 238, ${0.8 * neonStrength})`;
+      ctx.shadowBlur = 18 * neonStrength;
+      ctx.strokeStyle = `rgba(34, 211, 238, ${0.95 * neonStrength})`;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(drawnPoints[0].x, drawnPoints[0].y);
+      for (let i = 1; i < drawnPoints.length; i += 1) {
+        ctx.lineTo(drawnPoints[i].x, drawnPoints[i].y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function anchorFromPath(points) {
+      if (points.length < 12) return null;
+      const center = averagePoint(points);
+      let sxx = 0;
+      let sxy = 0;
+      let syy = 0;
+      for (const p of points) {
+        const dx = p.x - center.x;
+        const dy = p.y - center.y;
+        sxx += dx * dx;
+        sxy += dx * dy;
+        syy += dy * dy;
+      }
+
+      const trace = sxx + syy;
+      const diff = sxx - syy;
+      const root = Math.sqrt(diff * diff + 4 * sxy * sxy);
+      const lambda = (trace + root) / 2;
+      let xAxis = normalize({ x: sxy, y: lambda - sxx });
+      if (!Number.isFinite(xAxis.x) || !Number.isFinite(xAxis.y) || (Math.abs(xAxis.x) < 0.001 && Math.abs(xAxis.y) < 0.001)) {
+        xAxis = normalize({ x: 1, y: 0 });
+      }
+      let yAxis = normalize({ x: -xAxis.y, y: xAxis.x });
+
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const p of points) {
+        const rel = { x: p.x - center.x, y: p.y - center.y };
+        const u = dot(rel, xAxis);
+        const v = dot(rel, yAxis);
+        minX = Math.min(minX, u);
+        maxX = Math.max(maxX, u);
+        minY = Math.min(minY, v);
+        maxY = Math.max(maxY, v);
+      }
+
+      let width = maxX - minX;
+      let height = maxY - minY;
+      if (!Number.isFinite(width) || !Number.isFinite(height) || width < 80 || height < 40) return null;
+
+      if (height > width) {
+        const oldX = xAxis;
+        xAxis = yAxis;
+        yAxis = { x: -oldX.x, y: -oldX.y };
+        const oldWidth = width;
+        width = height;
+        height = oldWidth;
+        const oldMinX = minX;
+        const oldMaxX = maxX;
+        minX = minY;
+        maxX = maxY;
+        minY = -oldMaxX;
+        maxY = -oldMinX;
+      }
+
+      width *= 1.08;
+      height *= 1.12;
+      const localCenter = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+
+      return {
+        center: {
+          x: center.x + localCenter.x * xAxis.x + localCenter.y * yAxis.x,
+          y: center.y + localCenter.x * xAxis.y + localCenter.y * yAxis.y
+        },
+        xAxis,
+        yAxis,
+        baseWidth: width,
+        baseHeight: height
+      };
+    }
+
+    function getScaledAnchor(anchor) {
+      return {
+        center: { ...anchor.center },
+        xAxis: { ...anchor.xAxis },
+        yAxis: { ...anchor.yAxis },
+        width: anchor.baseWidth * keyboardScale,
+        height: anchor.baseHeight * keyboardScale
+      };
+    }
+
+    function keyAtPoint(point, anchor) {
+      const rel = { x: point.x - anchor.center.x, y: point.y - anchor.center.y };
+      const u = dot(rel, anchor.xAxis) / anchor.width + 0.5;
+      const v = dot(rel, anchor.yAxis) / anchor.height + 0.5;
+      for (const key of KEY_LAYOUT) {
+        if (u >= key.x && u <= key.x + key.w && v >= key.y && v <= key.y + key.h) {
+          return { key, u, v };
+        }
+      }
+      return null;
+    }
+
+    function buildLayout(rows) {
+      const result = [];
+      const vGap = 0.03;
+      const hGap = 0.018;
+      const rowHeight = (1 - vGap * (rows.length - 1)) / rows.length;
+      let y = 0;
+      rows.forEach((row) => {
+        const weights = row.map((label) => {
+          if (label === "SPACE") return 4.2;
+          if (label === "BACKSPACE") return 2.1;
+          if (label === "ENTER") return 2.0;
+          return 1;
+        });
+        const totalWeights = weights.reduce((sum, n) => sum + n, 0);
+        const unit = (1 - hGap * (row.length - 1)) / totalWeights;
+        let x = 0;
+        row.forEach((label, index) => {
+          const w = weights[index] * unit;
+          result.push({ label, x, y, w, h: rowHeight });
+          x += w + hGap;
+        });
+        y += rowHeight + vGap;
+      });
+      return result;
+    }
+
+    function drawNeonBoard(anchor, preview = false) {
+      const corners = [
+        project(anchor, 0, 0),
+        project(anchor, 1, 0),
+        project(anchor, 1, 1),
+        project(anchor, 0, 1)
+      ];
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(corners[0].x, corners[0].y);
+      corners.slice(1).forEach((p) => ctx.lineTo(p.x, p.y));
+      ctx.closePath();
+      ctx.fillStyle = preview ? "rgba(8, 26, 48, 0.13)" : "rgba(8, 26, 48, 0.18)";
+      ctx.shadowColor = `rgba(34, 211, 238, ${0.85 * neonStrength})`;
+      ctx.shadowBlur = 24 * neonStrength;
+      ctx.strokeStyle = `rgba(34, 211, 238, ${0.95 * neonStrength})`;
+      ctx.lineWidth = preview ? 3 : 3.5;
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      corners.forEach((corner) => {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(corner.x, corner.y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(249, 168, 212, ${0.95 * neonStrength})`;
+        ctx.shadowColor = `rgba(249, 168, 212, ${0.9 * neonStrength})`;
+        ctx.shadowBlur = 20 * neonStrength;
+        ctx.fill();
+        ctx.restore();
+      });
+    }
+
+    function drawKeyboard(anchor, hovered, now) {
+      const pulse = 0.56 + 0.44 * Math.sin(now / 260);
+      KEY_LAYOUT.forEach((key) => {
+        const corners = [
+          project(anchor, key.x, key.y),
+          project(anchor, key.x + key.w, key.y),
+          project(anchor, key.x + key.w, key.y + key.h),
+          project(anchor, key.x, key.y + key.h)
+        ];
+        const isHover = hovered && hovered.label === key.label;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(corners[0].x, corners[0].y);
+        corners.slice(1).forEach((p) => ctx.lineTo(p.x, p.y));
+        ctx.closePath();
+        ctx.fillStyle = isHover
+          ? `rgba(96, 165, 250, ${0.18 + pulse * 0.16})`
+          : "rgba(255, 255, 255, 0.05)";
+        ctx.strokeStyle = isHover
+          ? `rgba(96, 165, 250, ${0.95 * neonStrength})`
+          : `rgba(34, 211, 238, ${0.24 * neonStrength})`;
+        ctx.shadowColor = isHover
+          ? `rgba(96, 165, 250, ${0.9 * neonStrength})`
+          : `rgba(34, 211, 238, ${0.42 * neonStrength})`;
+        ctx.shadowBlur = isHover ? 18 * neonStrength : 10 * neonStrength;
+        ctx.lineWidth = isHover ? 2.4 : 1.2;
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        const center = project(anchor, key.x + key.w / 2, key.y + key.h / 2);
+        const fontSize = Math.max(11, Math.min(anchor.height * key.h * 0.42, 26));
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = `600 ${fontSize}px Inter, system-ui, sans-serif`;
+        ctx.fillStyle = isHover ? "rgba(255,255,255,1)" : "rgba(239, 246, 255, 0.92)";
+        ctx.fillText(formatKeyLabel(key.label), center.x, center.y + 1);
+        ctx.restore();
+      });
+
+      if (hovered) {
+        const progress = Math.max(0, Math.min(1, (performance.now() - hoverSince) / dwellMs));
+        const point = project(anchor, hovered.x + hovered.w / 2, hovered.y - 0.055);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+        ctx.strokeStyle = `rgba(134, 239, 172, ${0.96 * neonStrength})`;
+        ctx.lineWidth = 3;
+        ctx.shadowColor = `rgba(134, 239, 172, ${0.95 * neonStrength})`;
+        ctx.shadowBlur = 18 * neonStrength;
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    function drawHand(hand, indexPoint, thumbPoint) {
+      const segments = [
+        [0,1],[1,2],[2,3],[3,4],
+        [0,5],[5,6],[6,7],[7,8],
+        [5,9],[9,10],[10,11],[11,12],
+        [9,13],[13,14],[14,15],[15,16],
+        [13,17],[17,18],[18,19],[19,20],[0,17]
+      ];
+
+      ctx.save();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "rgba(255,255,255,0.26)";
+      segments.forEach(([a, b]) => {
+        const p1 = landmarkToPoint(hand[a]);
+        const p2 = landmarkToPoint(hand[b]);
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+      });
+
+      hand.forEach((landmark, index) => {
+        const p = landmarkToPoint(landmark);
+        const radius = index === 8 ? 7 : index === 4 ? 6 : 4;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = index === 8
+          ? "rgba(34, 211, 238, 0.96)"
+          : index === 4
+            ? "rgba(134, 239, 172, 0.95)"
+            : "rgba(255,255,255,0.78)";
+        ctx.fill();
+      });
+
+      ctx.setLineDash([8, 8]);
+      ctx.strokeStyle = "rgba(134, 239, 172, 0.55)";
+      ctx.beginPath();
+      ctx.moveTo(indexPoint.x, indexPoint.y);
+      ctx.lineTo(thumbPoint.x, thumbPoint.y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawCursor(point, pinchDistance) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, 18, 0, Math.PI * 2);
+      ctx.fillStyle = pinchDistance < PINCH_THRESHOLD
+        ? "rgba(134, 239, 172, 0.14)"
+        : "rgba(34, 211, 238, 0.12)";
+      ctx.strokeStyle = pinchDistance < PINCH_THRESHOLD
+        ? "rgba(134, 239, 172, 0.95)"
+        : "rgba(34, 211, 238, 0.9)";
+      ctx.lineWidth = 2.3;
+      ctx.shadowColor = ctx.strokeStyle;
+      ctx.shadowBlur = 16 * neonStrength;
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawOverlayHints() {
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = "600 18px Inter, system-ui, sans-serif";
+      ctx.fillStyle = "rgba(239, 246, 255, 0.74)";
+      let text = "Start the camera and draw a rectangle in the air";
+      if (phase === "preview") text = "Finish looks good? Pin the keyboard to begin typing";
+      if (phase === "typing") text = "Move your fingertip over the neon keys to type";
+      ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+      ctx.restore();
+    }
+
+    function project(anchor, u, v) {
+      return {
+        x: anchor.center.x + (u - 0.5) * anchor.width * anchor.xAxis.x + (v - 0.5) * anchor.height * anchor.yAxis.x,
+        y: anchor.center.y + (u - 0.5) * anchor.width * anchor.xAxis.y + (v - 0.5) * anchor.height * anchor.yAxis.y
+      };
+    }
+
+    function landmarkToPoint(landmark) {
+      const rect = canvas.getBoundingClientRect();
+      let x = landmark.x * rect.width;
+      if (mirror) x = rect.width - x;
+      return { x, y: landmark.y * rect.height, z: landmark.z };
+    }
+
+    function smoothPoint(point) {
+      if (!smoothedFinger) {
+        smoothedFinger = { ...point };
+        return smoothedFinger;
+      }
+      smoothedFinger = {
+        x: smoothedFinger.x + (point.x - smoothedFinger.x) * smoothingAlpha,
+        y: smoothedFinger.y + (point.y - smoothedFinger.y) * smoothingAlpha
+      };
+      return smoothedFinger;
+    }
+
+    function averagePoint(points) {
+      const sum = points.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
+      return { x: sum.x / points.length, y: sum.y / points.length };
+    }
+
+    function normalize(vector) {
+      const len = Math.hypot(vector.x, vector.y);
+      if (!len) return { x: 1, y: 0 };
+      return { x: vector.x / len, y: vector.y / len };
+    }
+
+    function dot(a, b) {
+      return a.x * b.x + a.y * b.y;
+    }
+
+    function distance(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    function formatKeyLabel(label) {
+      return SPECIAL_LABELS[label] || label;
+    }
+
+    function updateOutput() {
+      outputEl.textContent = typedText || "Draw, pin, and type on the neon keyboard pad.";
+    }
+
+    function syncMirror() {
+      video.classList.toggle("mirrored", mirror);
+      canvas.classList.toggle("mirrored", mirror);
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+      const width = Math.round(rect.width * dpr);
+      const height = Math.round(rect.height * dpr);
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function setStatus(text, tone) {
+      statusBadge.textContent = text;
+      statusBadge.style.color = tone === "ok"
+        ? "#86efac"
+        : tone === "bad"
+          ? "#fda4af"
+          : "#fde68a";
+    }
+
+    function refreshPhaseBadge() {
+      phaseBadge.textContent = `Phase: ${phase}`;
+    }
+  </script>
+</body>
+</html>
