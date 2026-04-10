@@ -1,5 +1,7 @@
 # Halo
 
+https://iusmusic.github.io/Halo/
+
 A static GitHub Pages web app prototype for a camera-based virtual keyboard.
 
 Users draw a rectangle in the air over a visible surface, the app converts that traced area into a neon keyboard pad, and then the keyboard can be pinned in place for typing with fingertip motion plus pinch or dwell selection.
