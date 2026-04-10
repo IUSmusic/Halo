@@ -127,6 +127,14 @@
               </select>
             </div>
             <div class="metric">
+              <div class="metric-label">Pointer control</div>
+              <select id="pointerSourceMode">
+                <option value="index" selected>Index finger</option>
+                <option value="onefinger">Any finger</option>
+                <option value="wholehand">Whole hand</option>
+              </select>
+            </div>
+            <div class="metric">
               <div class="metric-label">Dwell speed</div>
               <select id="dwellMode">
                 <option value="760">Slow</option>
@@ -186,7 +194,7 @@
             <li>Calibrate by holding your hand flat, or relaxed if you are using Bed mode, then tap the calibration button.</li>
             <li>Use <strong>One-hand sculpt</strong> to place the keyboard. Pinch to move it and change wrist angle to rotate it.</li>
             <li>Pin the keyboard and type with press, pinch, dwell, voice, or the touch mirror if the camera becomes unreliable.</li>
-            <li>In pointer mode, your index finger becomes a cursor. Pinch or press clicks. Two-finger swipe scrolls.</li>
+            <li>In pointer mode, choose index, any finger, or whole hand for the cursor. Air pinch clicks, pinch-hold drags, two-finger motion scrolls, and two-hand pinch zoom adjusts the page scale.</li>
           </ol>
         </section>
 
@@ -206,6 +214,7 @@
             <div><strong>Profile:</strong> <span id="profileText">Unknown</span></div>
             <div><strong>Light:</strong> <span id="lightText">Unknown</span></div>
             <div><strong>XR:</strong> <span id="xrText">Checking</span></div>
+            <div><strong>Navigation:</strong> <span id="pointerText">Index finger pointer</span></div>
           </div>
         </section>
 

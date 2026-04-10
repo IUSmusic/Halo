@@ -7,9 +7,9 @@ export function bindUI(state) {
     "cameraSelect","placementMode","anchorMode","interactionMode","drawBtn","finishBtn","pinBtn",
     "rotateLeftBtn","rotateRightBtn","resetBtn","selectionMode","mirrorMode","scaleMode","accuracyMode",
     "dwellMode","neonMode","soundToggle","vibrationToggle","bedModeToggle","lowLightToggle","touchFallbackToggle",
-    "mirrorDockMode","mirrorSizeMode","mirrorEnabledToggle","output","phaseBadge","statusBadge","trackingText","shapeText","modeText",
+    "pointerSourceMode","mirrorDockMode","mirrorSizeMode","mirrorEnabledToggle","output","phaseBadge","statusBadge","trackingText","shapeText","modeText",
     "rotationText","hoveredText","fingertipsText","triggerText","pinchText","pressText","calibrationText",
-    "profileText","lightText","xrText","voiceTranscript","tourModal","tourDismissBtn","calibrationModal",
+    "profileText","lightText","xrText","pointerText","voiceTranscript","tourModal","tourDismissBtn","calibrationModal",
     "calibrationTitle","calibrationBody","calibrationSkipBtn","calibrationCaptureBtn"
   ];
   const ui = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
@@ -30,6 +30,7 @@ export function bindUI(state) {
   ui.bedModeToggle.checked = state.ui.bedMode;
   ui.lowLightToggle.checked = state.ui.lowLightMode;
   ui.touchFallbackToggle.checked = state.ui.touchFallbackEnabled;
+  ui.pointerSourceMode.value = state.ui.pointerSource || "index";
   ui.mirrorDockMode.value = state.ui.mirrorDock;
   ui.mirrorSizeMode.value = state.ui.mirrorSize;
   ui.mirrorEnabledToggle.checked = state.ui.mirrorEnabled !== false;

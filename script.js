@@ -46,7 +46,7 @@ import {
   updateRotationText,
   updateVoiceUI,
 } from "./uiControls.js";
-import { clamp, deepClone, loadSettings, profileDevice, supportsWebXR, vibrate } from "./utils.js";
+import { averagePoint, clamp, deepClone, loadSettings, profileDevice, supportsWebXR, vibrate } from "./utils.js";
 
 const DEFAULT_STATE = {
   typedText: "",
@@ -78,6 +78,8 @@ const DEFAULT_STATE = {
     bedMode: false,
     lowLightMode: false,
     touchFallbackEnabled: true,
+    pointerSource: "index",
+    pageZoom: 1,
     mirrorDock: "right",
     mirrorSize: "medium",
     mirrorEnabled: true,
@@ -104,6 +106,19 @@ let lastPointerClickAt = 0;
 let lastVoiceGestureAt = 0;
 let drawActive = false;
 let sculptActive = false;
+const pointerState = {
+  hoverTarget: null,
+  pinchStartedAt: 0,
+  isDown: false,
+  downTarget: null,
+  downAt: 0,
+  dragMoved: false,
+  lastPoint: null,
+  lastMoveOrigin: null,
+  lastScrollCenter: null,
+  zoomDistance: 0,
+  lastZoomPersistAt: 0,
+};
 
 ui.profileText.textContent = `${profile.label} • ${profile.cores} cores • ${profile.memory} GB`;
 ui.calibrationText.textContent = state.calibration ? "Saved" : "Pending";
@@ -113,6 +128,8 @@ ui.touchFallback.classList.toggle("hidden", !state.ui.touchFallbackEnabled);
 refreshPhase(ui, state.phase);
 updateRotationText(ui, state.rotationOffsetDeg);
 updateModeText(ui, state);
+updatePointerLabel();
+applyPageZoom(state.ui.pageZoom || 1);
 updateVoiceUI(ui, "Voice idle", false);
 setStatus(ui, `Ready • MediaPipe ${MEDIAPIPE_VERSION}`, "ok");
 attachInstallPrompt(ui);
@@ -153,6 +170,7 @@ ui.touchFallbackToggle.addEventListener("change", () => {
   setUIValue("touchFallbackEnabled", ui.touchFallbackToggle.checked);
   ui.touchFallback.classList.toggle("hidden", !ui.touchFallbackToggle.checked);
 });
+ui.pointerSourceMode.addEventListener("change", () => setUIValue("pointerSource", ui.pointerSourceMode.value));
 ui.mirrorDockMode.addEventListener("change", () => {
   setUIValue("mirrorDock", ui.mirrorDockMode.value);
   applyMirrorDock(ui, state.ui.mirrorDock, state.ui.mirrorSize, state.ui.mirrorEnabled !== false);
@@ -229,6 +247,8 @@ async function registerServiceWorker() {
 
 function setUIValue(key, value) {
   state.ui[key] = value;
+  if (key === "pointerSource") updatePointerLabel();
+  if (key === "pageZoom") applyPageZoom(value);
   persist();
   updateModeText(ui, state);
   refreshLayout();
@@ -236,6 +256,21 @@ function setUIValue(key, value) {
 
 function persist() {
   persistState(state);
+}
+
+function updatePointerLabel(detail = "") {
+  const label = state.ui.pointerSource === "wholehand"
+    ? "Whole hand pointer"
+    : state.ui.pointerSource === "onefinger"
+      ? "Any finger pointer"
+      : "Index finger pointer";
+  ui.pointerText.textContent = detail ? `${label} • ${detail}` : label;
+}
+
+function applyPageZoom(value) {
+  const zoom = clamp(Number(value) || 1, 0.85, 1.6);
+  state.ui.pageZoom = Number(zoom.toFixed(2));
+  document.documentElement.style.zoom = String(state.ui.pageZoom);
 }
 
 function syncMirrorPreference() {
@@ -600,19 +635,21 @@ function renderFrame(now, result) {
 
     const gestureState = gestureStates.get(handIndex) || {};
     gestureStates.set(handIndex, gestureState);
-    const swipe = detectTwoFingerSwipe(hand, rect, getDisplayMirror(), gestureState);
-    if (swipe === "CAPS") {
-      state.capsLock = !state.capsLock;
-      refreshLayout();
-      setStatus(ui, `Caps ${state.capsLock ? "on" : "off"}`, "ok");
-    } else if (swipe === "SHIFT") {
-      state.shiftOn = !state.shiftOn;
-      refreshLayout();
-      setStatus(ui, `Shift ${state.shiftOn ? "on" : "off"}`, "ok");
-    } else if (swipe === "SCROLL_DOWN") {
-      window.scrollBy({ top: 180, behavior: "smooth" });
-    } else if (swipe === "SCROLL_UP") {
-      window.scrollBy({ top: -180, behavior: "smooth" });
+    if (state.ui.interactionMode === "type") {
+      const swipe = detectTwoFingerSwipe(hand, rect, getDisplayMirror(), gestureState);
+      if (swipe === "CAPS") {
+        state.capsLock = !state.capsLock;
+        refreshLayout();
+        setStatus(ui, `Caps ${state.capsLock ? "on" : "off"}`, "ok");
+      } else if (swipe === "SHIFT") {
+        state.shiftOn = !state.shiftOn;
+        refreshLayout();
+        setStatus(ui, `Shift ${state.shiftOn ? "on" : "off"}`, "ok");
+      } else if (swipe === "SCROLL_DOWN") {
+        window.scrollBy({ top: 180, behavior: "smooth" });
+      } else if (swipe === "SCROLL_UP") {
+        window.scrollBy({ top: -180, behavior: "smooth" });
+      }
     }
 
     if (detectThreeFingerSpread(hand, worldHands[handIndex]) && now - lastVoiceGestureAt > 1400) {
@@ -692,24 +729,18 @@ function renderFrame(now, result) {
   }
 
   if (state.ui.interactionMode === "pointer") {
-    const primary = cursors.find((cursor) => cursor.tipIndex === 8);
-    if (primary) {
-      const palmPaused = isPalmOpen(hands[0], rect, getDisplayMirror());
-      pointer = { x: primary.point.x, y: primary.point.y, paused: palmPaused };
-      const fingerState = getFingerState(fingerStates, primary.id);
-      const presetName = state.ui.accuracyMode === "auto" ? (state.ui.bedMode ? "bed" : tracker.profile.lowEnd ? "fast" : "balanced") : state.ui.accuracyMode;
-      const preset = createFilterPreset(presetName, primary.confidence, state.ui.bedMode);
-      const press = detectPressGesture(fingerState, primary.z, now, preset, primary.confidence);
-      const shouldClick = !palmPaused && ((primary.pinchDistance !== null && primary.pinchDistance < 0.048) || press.pressed);
-      if (shouldClick && now - lastPointerClickAt > 420) {
-        lastPointerClickAt = now;
-        const target = document.elementFromPoint(primary.point.x, primary.point.y);
-        if (target && typeof target.click === "function") {
-          target.click();
-          setStatus(ui, "Pointer click", "ok");
-        }
-      }
+    const trackedHands = buildTrackedHands(hands, rect);
+    const pointerInfo = trackedHands.length ? resolvePointerInfo(trackedHands, rect) : null;
+    if (pointerInfo) {
+      pointer = { x: pointerInfo.point.x, y: pointerInfo.point.y, paused: pointerInfo.paused };
+      handlePointerNavigation(now, pointerInfo, trackedHands, rect);
+    } else {
+      releasePointerIfNeeded();
+      updatePointerLabel();
     }
+  } else {
+    releasePointerIfNeeded();
+    updatePointerLabel();
   }
 
   const brightness = tracker.brightness;
@@ -735,6 +766,257 @@ function renderFrame(now, result) {
     lowLightMode: currentLowLightMode(),
     suggestions: mirrorState.suggestions,
   });
+}
+
+function buildTrackedHands(hands, rect) {
+  return hands.map((hand, handIndex) => {
+    const confidence = getHandConfidence(latestResult, handIndex);
+    if (confidence < 0.7) return null;
+    const presetName = state.ui.accuracyMode === "auto"
+      ? (state.ui.bedMode ? "bed" : tracker.profile.lowEnd ? "fast" : "balanced")
+      : state.ui.accuracyMode;
+    const preset = createFilterPreset(presetName, confidence, state.ui.bedMode);
+    const points = {};
+    [4, 8, 12, 16, 20].forEach((tipIndex) => {
+      points[tipIndex] = smoothCursor(
+        `nav-${handIndex}-${tipIndex}`,
+        getPoint(rect, hand[tipIndex], getDisplayMirror()),
+        smoothingFilters,
+        preset,
+      );
+    });
+    const palmPoint = smoothCursor(
+      `nav-${handIndex}-palm`,
+      averagePoint([
+        getPoint(rect, hand[0], getDisplayMirror()),
+        getPoint(rect, hand[5], getDisplayMirror()),
+        getPoint(rect, hand[9], getDisplayMirror()),
+        getPoint(rect, hand[13], getDisplayMirror()),
+        getPoint(rect, hand[17], getDisplayMirror()),
+      ]),
+      smoothingFilters,
+      preset,
+    );
+    const pinchDistance = Math.hypot(points[8].x - points[4].x, points[8].y - points[4].y) / Math.max(rect.width, rect.height);
+    const twoFingerCenter = averagePoint([points[8], points[12]]);
+    const twoFingerSpread = Math.hypot(points[8].x - points[12].x, points[8].y - points[12].y) / Math.max(rect.width, rect.height);
+    return {
+      hand,
+      handIndex,
+      confidence,
+      points,
+      palmPoint,
+      pinchDistance,
+      twoFingerCenter,
+      twoFingerSpread,
+      paused: isPalmOpen(hand, rect, getDisplayMirror()),
+    };
+  }).filter(Boolean);
+}
+
+function resolvePointerInfo(trackedHands, rect) {
+  const primary = trackedHands[0];
+  if (!primary) return null;
+  let sourceLabel = "index";
+  let sourcePoint = primary.points[8];
+  let sourceTipIndex = 8;
+
+  if (state.ui.pointerSource === "wholehand") {
+    sourceLabel = "whole hand";
+    sourcePoint = primary.palmPoint;
+    sourceTipIndex = 8;
+  } else if (state.ui.pointerSource === "onefinger") {
+    const candidates = [8, 12, 16, 20].map((tipIndex) => ({ tipIndex, point: primary.points[tipIndex] }));
+    const chosen = candidates.reduce((best, candidate) => {
+      if (!pointerState.lastPoint) {
+        if (candidate.tipIndex === 8) return candidate;
+        return best;
+      }
+      const bestDist = best ? Math.hypot(best.point.x - pointerState.lastPoint.x, best.point.y - pointerState.lastPoint.y) : Infinity;
+      const nextDist = Math.hypot(candidate.point.x - pointerState.lastPoint.x, candidate.point.y - pointerState.lastPoint.y);
+      return nextDist < bestDist ? candidate : best;
+    }, null) || candidates[0];
+    sourceLabel = `${FINGER_NAMES[chosen.tipIndex]} finger`;
+    sourcePoint = chosen.point;
+    sourceTipIndex = chosen.tipIndex;
+  }
+
+  const sourceCursorId = `pointer-${primary.handIndex}-${sourceTipIndex}`;
+  const fingerState = getFingerState(fingerStates, sourceCursorId);
+  const sourceZ = primary.hand[sourceTipIndex]?.z ?? primary.hand[8]?.z ?? 0;
+  updateDepthState(fingerState, sourceZ);
+  const presetName = state.ui.accuracyMode === "auto" ? (state.ui.bedMode ? "bed" : tracker.profile.lowEnd ? "fast" : "balanced") : state.ui.accuracyMode;
+  const preset = createFilterPreset(presetName, primary.confidence, state.ui.bedMode);
+  fingerState.hoverSince ||= performance.now();
+  const press = detectPressGesture(fingerState, sourceZ, performance.now(), preset, primary.confidence);
+
+  return {
+    primary,
+    point: sourcePoint,
+    sourceLabel,
+    paused: primary.paused,
+    pinchClosed: primary.pinchDistance < (state.ui.bedMode ? 0.062 : 0.052),
+    pressClicked: press.pressed,
+    scrollCenter: primary.twoFingerCenter,
+    scrollActive: primary.twoFingerSpread > 0.055 && !primary.paused,
+    zoomActive: trackedHands.length >= 2 && trackedHands[0].pinchDistance < 0.072 && trackedHands[1].pinchDistance < 0.072,
+    zoomDistance: trackedHands.length >= 2 ? Math.hypot(trackedHands[0].points[8].x - trackedHands[1].points[8].x, trackedHands[0].points[8].y - trackedHands[1].points[8].y) : 0,
+    zoomMidpoint: trackedHands.length >= 2 ? averagePoint([trackedHands[0].points[8], trackedHands[1].points[8]]) : sourcePoint,
+  };
+}
+
+function handlePointerNavigation(now, pointerInfo, trackedHands, rect) {
+  pointerState.lastPoint = { ...pointerInfo.point };
+  updatePointerLabel(pointerInfo.paused ? `${pointerInfo.sourceLabel} • paused` : pointerInfo.sourceLabel);
+
+  if (pointerInfo.zoomActive) {
+    releasePointerIfNeeded();
+    handleAirZoom(pointerInfo, now);
+    return;
+  }
+  pointerState.zoomDistance = 0;
+
+  if (pointerInfo.scrollActive && !pointerInfo.pinchClosed) {
+    handleAirScroll(pointerInfo);
+  } else {
+    pointerState.lastScrollCenter = null;
+  }
+
+  if (pointerInfo.paused) {
+    releasePointerIfNeeded();
+    return;
+  }
+
+  dispatchHover(pointerInfo.point);
+
+  if (pointerInfo.pressClicked && now - lastPointerClickAt > 420) {
+    lastPointerClickAt = now;
+    const target = document.elementFromPoint(pointerInfo.point.x, pointerInfo.point.y);
+    if (target && typeof target.click === "function") {
+      target.click();
+      setStatus(ui, "Pointer click", "ok");
+    }
+  }
+
+  if (pointerInfo.pinchClosed) {
+    if (!pointerState.pinchStartedAt) pointerState.pinchStartedAt = now;
+    if (!pointerState.isDown && now - pointerState.pinchStartedAt > 90) {
+      const target = document.elementFromPoint(pointerInfo.point.x, pointerInfo.point.y) || document.body;
+      pointerState.isDown = true;
+      pointerState.downTarget = target;
+      pointerState.downAt = now;
+      pointerState.dragMoved = false;
+      dispatchMouseLikeEvent(target, "mousedown", pointerInfo.point, 1);
+      setStatus(ui, "Pointer hold", "ok");
+    }
+  } else {
+    if (pointerState.isDown) {
+      const target = pointerState.downTarget || document.elementFromPoint(pointerInfo.point.x, pointerInfo.point.y) || document.body;
+      dispatchMouseLikeEvent(target, "mouseup", pointerInfo.point, 0);
+      if (!pointerState.dragMoved && now - pointerState.downAt < 420) {
+        if (typeof target.click === "function") target.click();
+      }
+      pointerState.isDown = false;
+      pointerState.downTarget = null;
+      pointerState.dragMoved = false;
+      setStatus(ui, "Pointer release", "ok");
+    }
+    pointerState.pinchStartedAt = 0;
+  }
+
+  if (pointerState.isDown && pointerState.lastPoint) {
+    const moved = !pointerState.lastMoveOrigin ? 0 : Math.hypot(pointerInfo.point.x - pointerState.lastMoveOrigin.x, pointerInfo.point.y - pointerState.lastMoveOrigin.y);
+    if (moved > 6) pointerState.dragMoved = true;
+    dispatchMouseLikeEvent(pointerState.downTarget || document.body, "mousemove", pointerInfo.point, 1);
+  }
+  pointerState.lastMoveOrigin = { ...pointerInfo.point };
+}
+
+function dispatchHover(point) {
+  const target = document.elementFromPoint(point.x, point.y) || document.body;
+  if (pointerState.hoverTarget !== target) pointerState.hoverTarget = target;
+  dispatchMouseLikeEvent(target, "mousemove", point, pointerState.isDown ? 1 : 0);
+}
+
+function dispatchMouseLikeEvent(target, type, point, buttons = 0) {
+  if (!target) return;
+  const event = new MouseEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    clientX: point.x,
+    clientY: point.y,
+    screenX: window.screenX + point.x,
+    screenY: window.screenY + point.y,
+    button: buttons ? 0 : 0,
+    buttons,
+    view: window,
+  });
+  target.dispatchEvent(event);
+}
+
+function handleAirScroll(pointerInfo) {
+  if (!pointerState.lastScrollCenter) {
+    pointerState.lastScrollCenter = { ...pointerInfo.scrollCenter };
+    return;
+  }
+  const dx = pointerInfo.scrollCenter.x - pointerState.lastScrollCenter.x;
+  const dy = pointerInfo.scrollCenter.y - pointerState.lastScrollCenter.y;
+  pointerState.lastScrollCenter = { ...pointerInfo.scrollCenter };
+  if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
+  const target = document.elementFromPoint(pointerInfo.point.x, pointerInfo.point.y) || document.scrollingElement || document.body;
+  const wheel = new WheelEvent("wheel", {
+    bubbles: true,
+    cancelable: true,
+    clientX: pointerInfo.point.x,
+    clientY: pointerInfo.point.y,
+    deltaX: -dx * 2.2,
+    deltaY: -dy * 2.6,
+  });
+  target.dispatchEvent(wheel);
+  window.scrollBy({ left: -dx * 2.2, top: -dy * 2.6, behavior: "auto" });
+}
+
+function handleAirZoom(pointerInfo, now) {
+  if (!pointerState.zoomDistance) {
+    pointerState.zoomDistance = pointerInfo.zoomDistance;
+    updatePointerLabel("two-hand pinch zoom");
+    return;
+  }
+  const delta = pointerInfo.zoomDistance - pointerState.zoomDistance;
+  pointerState.zoomDistance = pointerInfo.zoomDistance;
+  if (Math.abs(delta) < 3) return;
+  const nextZoom = clamp((state.ui.pageZoom || 1) + delta * 0.0025, 0.85, 1.6);
+  if (Math.abs(nextZoom - (state.ui.pageZoom || 1)) < 0.01) return;
+  applyPageZoom(nextZoom);
+  updatePointerLabel(`zoom ${Math.round(state.ui.pageZoom * 100)}%`);
+  const target = document.elementFromPoint(pointerInfo.zoomMidpoint.x, pointerInfo.zoomMidpoint.y) || document.body;
+  const wheel = new WheelEvent("wheel", {
+    bubbles: true,
+    cancelable: true,
+    clientX: pointerInfo.zoomMidpoint.x,
+    clientY: pointerInfo.zoomMidpoint.y,
+    deltaY: -delta * 4,
+    ctrlKey: true,
+  });
+  target.dispatchEvent(wheel);
+  if (now - pointerState.lastZoomPersistAt > 180) {
+    pointerState.lastZoomPersistAt = now;
+    persist();
+  }
+}
+
+function releasePointerIfNeeded() {
+  if (pointerState.isDown) {
+    const point = pointerState.lastPoint || { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    dispatchMouseLikeEvent(pointerState.downTarget || document.body, "mouseup", point, 0);
+  }
+  pointerState.isDown = false;
+  pointerState.pinchStartedAt = 0;
+  pointerState.downTarget = null;
+  pointerState.dragMoved = false;
+  pointerState.lastMoveOrigin = null;
+  pointerState.lastScrollCenter = null;
+  pointerState.zoomDistance = 0;
 }
 
 function currentLowLightMode() {
