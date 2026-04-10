@@ -1,7 +1,5 @@
 # Halo
 
-https://iusmusic.github.io/Halo/
-
 Halo is a static browser app for a camera-based virtual keyboard that can be hosted on GitHub Pages.
 
 ## What changed in this update
@@ -65,3 +63,20 @@ This is still a browser-first implementation. Pointer mode can control the web a
 ## Run locally
 
 Serve over HTTPS or use GitHub Pages. Camera access and installability will not work correctly from an insecure local file URL in most browsers.
+
+
+## Offline MediaPipe setup
+
+This build is configured to load MediaPipe entirely from `./external/` instead of any CDN.
+Place these files in the `external/` folder next to `index.html`:
+
+- `vision_bundle.mjs`
+- `hand_landmarker.task`
+- `vision_wasm_internal.js`
+- `vision_wasm_internal.wasm`
+- `vision_wasm_module_internal.js`
+- `vision_wasm_module_internal.wasm`
+- `vision_wasm_nosimd_internal.js`
+- `vision_wasm_nosimd_internal.wasm`
+
+If any of them are missing, Halo will show a local asset error instead of trying the network.

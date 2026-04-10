@@ -1,9 +1,9 @@
-import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.34/vision_bundle.mjs";
+import { HandLandmarker, FilesetResolver } from "./external/vision_bundle.mjs";
 import { profileDevice } from "./utils.js";
 
 export const MEDIAPIPE_VERSION = "0.10.34";
-const MODEL_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
-const WASM_ROOT = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`;
+const MODEL_URL = "./external/hand_landmarker.task";
+const WASM_ROOT = "./external";
 
 export class HandTracker {
   constructor(video, { onStatus } = {}) {
@@ -23,7 +23,13 @@ export class HandTracker {
   async init({ numHands = 2, lowEnd = false } = {}) {
     if (this.landmarker) return this.landmarker;
     this.onStatus(`Loading hand tracking ${MEDIAPIPE_VERSION}…`, "warn");
-    const vision = await FilesetResolver.forVisionTasks(WASM_ROOT);
+    let vision;
+    try {
+      vision = await FilesetResolver.forVisionTasks(WASM_ROOT);
+    } catch (error) {
+      this.onStatus("Local MediaPipe files missing from /external", "error");
+      throw error;
+    }
     const base = {
       baseOptions: {
         modelAssetPath: MODEL_URL,
@@ -40,8 +46,13 @@ export class HandTracker {
     } catch (error) {
       const fallback = JSON.parse(JSON.stringify(base));
       fallback.baseOptions.delegate = "CPU";
-      this.landmarker = await HandLandmarker.createFromOptions(vision, fallback);
-      this.onStatus("GPU unavailable, using CPU fallback", "warn");
+      try {
+        this.landmarker = await HandLandmarker.createFromOptions(vision, fallback);
+        this.onStatus("GPU unavailable, using CPU fallback", "warn");
+      } catch (fallbackError) {
+        this.onStatus("Hand model could not load from /external", "error");
+        throw fallbackError;
+      }
     }
     return this.landmarker;
   }

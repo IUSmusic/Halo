@@ -1,4 +1,4 @@
-const CACHE = "halo-v2";
+const CACHE = "halo-v3-local-external";
 const ASSETS = [
   "./",
   "./index.html",
@@ -13,7 +13,15 @@ const ASSETS = [
   "./words.js",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
-  "./icons/icon-512.png"
+  "./icons/icon-512.png",
+  "./external/vision_bundle.mjs",
+  "./external/hand_landmarker.task",
+  "./external/vision_wasm_internal.js",
+  "./external/vision_wasm_internal.wasm",
+  "./external/vision_wasm_module_internal.js",
+  "./external/vision_wasm_module_internal.wasm",
+  "./external/vision_wasm_nosimd_internal.js",
+  "./external/vision_wasm_nosimd_internal.wasm"
 ];
 
 self.addEventListener("install", (event) => {
