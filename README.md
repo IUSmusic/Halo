@@ -28,12 +28,3 @@ This is still a browser-only approximation of a surface keyboard. The 3D surface
 
 Serve over HTTPS or use GitHub Pages. Camera access will not work from an insecure local file URL in most browsers.
 
-## Deploy to GitHub Pages
-
-1. Create a GitHub repository
-2. Upload all files from this folder
-3. In GitHub, open **Settings → Pages**
-4. Set the source to **GitHub Actions**
-5. Push to `main`
-
-The included workflow will publish the site automatically.
