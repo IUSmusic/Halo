@@ -297,10 +297,11 @@
               </select>
             </div>
             <div class="metric">
-              <div class="metric-label">Mirror view</div>
+              <div class="metric-label">View mode</div>
               <select id="mirrorMode">
-                <option value="off" selected>Off</option>
-                <option value="on">On</option>
+                <option value="natural" selected>Natural</option>
+                <option value="selfie">Selfie</option>
+                <option value="raw">Raw</option>
               </select>
             </div>
             <div class="metric">
@@ -353,7 +354,7 @@
             <li>Press <strong>Pin keyboard</strong> when the placement feels right.</li>
             <li>Type with any fingertips. In <strong>Press gesture</strong> mode, a short poke motion triggers the key instead of simple hover timing.</li>
           </ol>
-          <p class="small">The 3D surface mode is still an in-browser approximation. It uses hand orientation and depth to give the keyboard a surface-like plane and press feel, but it is not full AR plane detection.</p>
+          <p class="small">Natural view now keeps overlay text readable and corrects left-right for front cameras more reliably. Press typing also uses sticky key targeting and a press-and-release gesture so it is easier to land the right key.</p>
         </section>
 
         <section class="card">
@@ -442,7 +443,8 @@
     let placementMode = "sculpt";
     let anchorMode = "surface";
     let selectionMode = "press";
-    let mirror = false;
+    let viewMode = "natural";
+    let currentFacingHint = "unknown";
     let keyboardScale = 1;
     let dwellMs = 520;
     let smoothingAlpha = 0.3;
@@ -471,9 +473,13 @@
 
     const DRAW_POINT_STEP = 6;
     const PINCH_THRESHOLD = 0.055;
-    const PRESS_DEPTH_THRESHOLD = 0.018;
-    const PRESS_VELOCITY_THRESHOLD = 0.0018;
-    const PRESS_RECOVERY_THRESHOLD = 0.008;
+    const PRESS_DEPTH_THRESHOLD = 0.010;
+    const PRESS_VELOCITY_THRESHOLD = 0.00055;
+    const PRESS_RECOVERY_THRESHOLD = 0.0045;
+    const MIN_HOVER_BEFORE_PRESS_MS = 45;
+    const KEY_SNAP_PADDING = 0.028;
+    const KEY_STICKY_PADDING = 0.055;
+    const NEAREST_KEY_DISTANCE = 0.9;
     const GLOBAL_REPEAT_GUARD_MS = 90;
     const ROTATION_STEP_DEG = 6;
 
@@ -502,7 +508,7 @@
     });
 
     selectionModeEl.addEventListener("change", () => { selectionMode = selectionModeEl.value; });
-    mirrorModeEl.addEventListener("change", () => { mirror = mirrorModeEl.value === "on"; syncMirror(); });
+    mirrorModeEl.addEventListener("change", () => { viewMode = mirrorModeEl.value; syncMirror(); });
     scaleModeEl.addEventListener("change", () => { keyboardScale = Number(scaleModeEl.value); });
     dwellModeEl.addEventListener("change", () => { dwellMs = Number(dwellModeEl.value); });
     neonModeEl.addEventListener("change", () => { neonStrength = Number(neonModeEl.value); });
@@ -687,7 +693,9 @@
         running = true;
         resizeCanvas();
         await refreshCameraList();
-        setStatus("Camera running", "ok");
+        currentFacingHint = inferFacingHint(stream, currentDeviceId);
+        syncMirror();
+        setStatus(`Camera running (${currentFacingHint})`, "ok");
         trackingText.textContent = "Show one or two hands";
         trackingText.className = "warn";
         requestAnimationFrame(loop);
@@ -727,6 +735,25 @@
       }
     }
 
+    function inferFacingHint(activeStream, deviceId) {
+      try {
+        const track = activeStream?.getVideoTracks?.()[0];
+        const settings = track?.getSettings?.() || {};
+        const facingMode = String(settings.facingMode || "").toLowerCase();
+        if (facingMode.includes("front") || facingMode.includes("user")) return "front";
+        if (facingMode.includes("back") || facingMode.includes("rear") || facingMode.includes("environment")) return "rear";
+
+        const option = Array.from(cameraSelect.options).find((item) => item.value === deviceId);
+        const label = String(option?.textContent || "").toLowerCase();
+        if (/(front|user|face|facetime|selfie)/.test(label)) return "front";
+        if (/(back|rear|environment|world)/.test(label)) return "rear";
+        if (/(external|usb)/.test(label)) return "external";
+      } catch (error) {
+        console.error(error);
+      }
+      return "unknown";
+    }
+
     function loop(now) {
       if (!running) return;
       resizeCanvas();
@@ -746,6 +773,7 @@
         trackingText.className = "warn";
         fingertipsText.textContent = "0";
         hoveredText.textContent = "—";
+        pressText.textContent = "—";
         drawGhostBoards();
         drawOverlayHints();
         return;
@@ -791,7 +819,8 @@
       const activeAnchor = getActiveDisplayAnchor();
       if (activeAnchor) {
         cursors.forEach((cursor) => {
-          const hit = keyAtPoint(cursor.point, activeAnchor);
+          const state = getFingerState(cursor.id);
+          const hit = keyAtPoint(cursor.point, activeAnchor, state.lastHoverKey);
           if (hit) {
             cursor.hoveredKey = hit.key;
             hoveredLabels.add(hit.key.label);
@@ -878,9 +907,7 @@
         updateDepthState(state, cursor.z);
 
         if (!keyLabel) {
-          state.hoverSince = 0;
-          state.lastHoverKey = null;
-          state.pressArmed = true;
+          resetFingerHover(state);
           return;
         }
 
@@ -888,9 +915,8 @@
           state.hoverSince = now;
           state.lastHoverKey = keyLabel;
           state.depthBaseline = cursor.z;
-          state.pressArmed = true;
-        } else {
-          state.depthBaseline = Math.max(state.depthBaseline, cursor.z);
+          state.pressActive = false;
+          state.pressPeak = 0;
         }
 
         const pressDelta = Math.abs(cursor.z - state.depthBaseline);
@@ -900,9 +926,8 @@
         const canPinch = !cursor.isThumb && (selectionMode === "pinch" || selectionMode === "hybrid");
         const canDwell = selectionMode === "dwell" || selectionMode === "hybrid";
 
-        if (!committed && canPress && detectPressGesture(state, cursor.z)) {
+        if (!committed && canPress && detectPressGesture(state, cursor.z, now)) {
           committed = tryCommitKey(keyLabel, now, cursor.id, `press ${cursor.fingerName}`);
-          if (committed) state.pressArmed = false;
         }
 
         if (!committed && canPinch && cursor.pinchDistance !== null && cursor.pinchDistance < PINCH_THRESHOLD) {
@@ -918,6 +943,13 @@
       return maxPressDelta;
     }
 
+    function resetFingerHover(state) {
+      state.hoverSince = 0;
+      state.lastHoverKey = null;
+      state.pressActive = false;
+      state.pressPeak = 0;
+    }
+
     function updateDepthState(state, z) {
       if (state.lastZ === null) {
         state.lastZ = z;
@@ -927,18 +959,32 @@
       }
       state.depthVelocity = z - state.lastZ;
       state.lastZ = z;
+      const baselineAlpha = state.pressActive ? 0.015 : 0.06;
+      state.depthBaseline = state.depthBaseline + (z - state.depthBaseline) * baselineAlpha;
     }
 
-    function detectPressGesture(state, z) {
-      if (!state.pressArmed) {
-        if (Math.abs(z - state.depthBaseline) < PRESS_RECOVERY_THRESHOLD) {
-          state.pressArmed = true;
+    function detectPressGesture(state, z, now) {
+      const depthDelta = Math.abs(z - state.depthBaseline);
+      const velocity = Math.abs(state.depthVelocity);
+
+      if (!state.pressActive) {
+        if (!state.hoverSince || now - state.hoverSince < MIN_HOVER_BEFORE_PRESS_MS) return false;
+        if (depthDelta > PRESS_DEPTH_THRESHOLD && velocity > PRESS_VELOCITY_THRESHOLD) {
+          state.pressActive = true;
+          state.pressPeak = depthDelta;
         }
         return false;
       }
-      const depthDelta = Math.abs(z - state.depthBaseline);
-      const velocity = Math.abs(state.depthVelocity);
-      return depthDelta > PRESS_DEPTH_THRESHOLD && velocity > PRESS_VELOCITY_THRESHOLD;
+
+      state.pressPeak = Math.max(state.pressPeak || 0, depthDelta);
+      if (depthDelta < PRESS_RECOVERY_THRESHOLD) {
+        const peak = state.pressPeak || 0;
+        state.pressActive = false;
+        state.pressPeak = 0;
+        state.depthBaseline = z;
+        return peak > PRESS_DEPTH_THRESHOLD * 1.15;
+      }
+      return false;
     }
 
     function tryCommitKey(label, now, cursorId, source) {
@@ -950,6 +996,8 @@
       state.hoverSince = now;
       state.lastHoverKey = label;
       state.depthBaseline = state.lastZ ?? state.depthBaseline;
+      state.pressActive = false;
+      state.pressPeak = 0;
       lastGlobalCommitTime = now;
       lastGlobalKey = label;
       lastTrigger = `${source} → ${formatKeyLabel(label)}`;
@@ -1156,14 +1204,41 @@
       return pinnedAnchor || previewAnchor || sculptAnchor;
     }
 
-    function keyAtPoint(point, anchor) {
+    function keyAtPoint(point, anchor, lockedKeyLabel = null) {
       const rel = { x: point.x - anchor.center.x, y: point.y - anchor.center.y };
       const u = dot(rel, anchor.xAxis) / anchor.width + 0.5;
       const v = dot(rel, anchor.yAxis) / anchor.height + 0.5;
-      for (const key of KEY_LAYOUT) {
-        if (u >= key.x && u <= key.x + key.w && v >= key.y && v <= key.y + key.h) return { key, u, v };
+
+      if (lockedKeyLabel) {
+        const lockedKey = KEY_LAYOUT.find((key) => key.label === lockedKeyLabel);
+        if (lockedKey && pointInExpandedKey(u, v, lockedKey, KEY_STICKY_PADDING)) {
+          return { key: lockedKey, u, v };
+        }
       }
-      return null;
+
+      for (const key of KEY_LAYOUT) {
+        if (pointInExpandedKey(u, v, key, KEY_SNAP_PADDING)) return { key, u, v };
+      }
+
+      let nearest = null;
+      let nearestDistance = Infinity;
+      for (const key of KEY_LAYOUT) {
+        const centerU = key.x + key.w / 2;
+        const centerV = key.y + key.h / 2;
+        const du = (u - centerU) / Math.max(key.w, 0.001);
+        const dv = (v - centerV) / Math.max(key.h, 0.001);
+        const dist = Math.hypot(du, dv);
+        if (dist < nearestDistance) {
+          nearestDistance = dist;
+          nearest = { key, u, v };
+        }
+      }
+
+      return nearestDistance <= NEAREST_KEY_DISTANCE ? nearest : null;
+    }
+
+    function pointInExpandedKey(u, v, key, padding) {
+      return u >= key.x - padding && u <= key.x + key.w + padding && v >= key.y - padding && v <= key.y + key.h + padding;
     }
 
     function anchorFromPath(points) {
@@ -1254,7 +1329,7 @@
     function landmarkToPoint(landmark) {
       const rect = canvas.getBoundingClientRect();
       let x = landmark.x * rect.width;
-      if (mirror) x = rect.width - x;
+      if (getDisplayMirror()) x = rect.width - x;
       return { x, y: landmark.y * rect.height, z: landmark.z };
     }
 
@@ -1272,7 +1347,7 @@
 
     function getFingerState(id) {
       if (!fingerStates.has(id)) {
-        fingerStates.set(id, { hoverSince: 0, lastCommitTime: 0, lastHoverKey: null, lastZ: null, depthBaseline: 0, depthVelocity: 0, pressArmed: true });
+        fingerStates.set(id, { hoverSince: 0, lastCommitTime: 0, lastHoverKey: null, lastZ: null, depthBaseline: 0, depthVelocity: 0, pressActive: false, pressPeak: 0 });
       }
       return fingerStates.get(id);
     }
@@ -1316,9 +1391,14 @@
     function updateOutput() {
       outputEl.textContent = typedText || "Place Halo and type with a press gesture.";
     }
+    function getDisplayMirror() {
+      if (viewMode === "selfie") return true;
+      if (viewMode === "natural") return currentFacingHint === "front";
+      return false;
+    }
     function syncMirror() {
-      video.classList.toggle("mirrored", mirror);
-      canvas.classList.toggle("mirrored", mirror);
+      video.classList.toggle("mirrored", getDisplayMirror());
+      canvas.classList.remove("mirrored");
     }
     function resizeCanvas() {
       const rect = canvas.getBoundingClientRect();
