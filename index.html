@@ -342,10 +342,35 @@ async function createHandLandmarker() {
   if (state.modelLoadPromise) return state.modelLoadPromise;
   state.modelLoadPromise = (async () => {
     setStatus("Camera running • loading hand tracking…", "warn");
-    const module = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.mjs");
-    state.FilesetResolver = module.FilesetResolver;
-    state.HandLandmarker = module.HandLandmarker;
-    const vision = await state.FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm");
+    const candidates = [
+      {
+        moduleUrl: "https://unpkg.com/@mediapipe/tasks-vision@0.10.0/vision_bundle.mjs",
+        wasmRoot: "https://unpkg.com/@mediapipe/tasks-vision@0.10.0/wasm"
+      },
+      {
+        moduleUrl: "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.mjs",
+        wasmRoot: "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
+      }
+    ];
+
+    let vision = null;
+    let lastError = null;
+    for (const candidate of candidates) {
+      try {
+        const module = await import(candidate.moduleUrl);
+        state.FilesetResolver = module.FilesetResolver;
+        state.HandLandmarker = module.HandLandmarker;
+        vision = await state.FilesetResolver.forVisionTasks(candidate.wasmRoot);
+        break;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (!vision || !state.HandLandmarker) {
+      throw lastError || new Error("Failed to load MediaPipe vision bundle from all configured CDNs");
+    }
+
     state.handLandmarker = await state.HandLandmarker.createFromOptions(vision, {
       baseOptions: {
         modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
